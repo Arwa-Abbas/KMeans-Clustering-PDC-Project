@@ -15,6 +15,57 @@ The repository expects the downloaded archive at:
 dataset/HIGGS.csv.gz
 ```
 
+## Setup after cloning
+
+The dataset and generated binaries are intentionally excluded from Git because
+the source archive is about 2.6 GB and the normalized binary is about 1.15 GiB.
+
+1. Clone the repository and enter it:
+
+   ```bash
+   git clone https://github.com/Arwa-Abbas/KMeans-Clustering-PDC-Project.git
+   cd KMeans-Clustering-PDC-Project
+   ```
+
+2. Install the Ubuntu dependencies:
+
+   ```bash
+   sudo apt update
+   sudo apt install -y build-essential openmpi-bin libopenmpi-dev zlib1g-dev
+   ```
+
+3. Download `HIGGS.csv.gz` from the
+   [UCI HIGGS dataset page](https://archive.ics.uci.edu/dataset/280/higgs),
+   create the local dataset directory, and place the file at exactly:
+
+   ```text
+   KMeans-Clustering-PDC-Project/dataset/HIGGS.csv.gz
+   ```
+
+   From the repository root, the expected relative path is:
+
+   ```text
+   dataset/HIGGS.csv.gz
+   ```
+
+4. Build and validate the setup:
+
+   ```bash
+   make
+   make test
+   ./build/higgs_dataset inspect --full-scan
+   ```
+
+5. Generate the normalized binary used by the K-Means implementations:
+
+   ```bash
+   ./build/preprocess_higgs
+   ```
+
+   Use `--overwrite` only when intentionally replacing an existing processed
+   binary. Keep at least 5 GiB free for the compressed source, processed matrix,
+   metadata, and temporary output. CSV extraction is not required.
+
 The checked archive is 2.623 GiB. HIGGS rows have 29 comma-separated numeric
 values: a binary class label followed by 28 features. The label is useful for
 dataset validation but will not be used as a K-Means feature.
