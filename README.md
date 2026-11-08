@@ -1,42 +1,51 @@
 # Parallel K-Means Clustering on Large Dataset (HIGGS Dataset)
 
 A Parallel and Distributed Computing (PDC) course project that clusters the
-11-million-point HIGGS dataset with K-Means in C. The main implementation is
-hybrid: MPI processes divide the data, and OpenMP threads calculate distances
-within each process. Sequential, OpenMP-only, and MPI-only programs provide
-correctness and performance comparisons.
+11-million-point HIGGS dataset with K-Means in C++17. The main implementation
+is hybrid: MPI processes divide the data, and OpenMP threads calculate
+distances within each process. Sequential, OpenMP-only, and MPI-only programs
+provide correctness and performance comparisons.
 
 ## Features
 
-- Four K-Means execution modes: sequential, OpenMP, MPI, and MPI + OpenMP.
-- C11 implementation with GCC, Open MPI, OpenMP, zlib, and GNU Make.
+- Four K-Means execution modes built from one code base: sequential, OpenMP,
+  MPI, and MPI + OpenMP.
+- C++17 implementation with GCC, Open MPI, OpenMP, zlib, and GNU Make.
 - Streaming validation and z-score normalization of the HIGGS archive.
 - Compact row-major `float32` matrix with a metadata file for MPI-IO.
 - Fixed-seed K-Means++ initialization from the first 100,000 points.
 - Squared Euclidean distance, configurable K and iteration limit, and a
   changed-assignment stopping rule (0.1% by default).
+- One assignment kernel shared by all four modes, so one-worker timings are
+  directly comparable.
+- One `MPI_Allreduce` per iteration.
+- `--rows N` clusters only the first N rows, for weak-scaling experiments.
 - Per-run JSON with initial/final centroids, SSE, iterations, and separate
   loading, initialization, and computation timings.
-- Synthetic correctness tests and saved HIGGS reference results.
-
-The full analysis of K=16, 64, and 256, repeated benchmark runs, speedup,
-efficiency, and plots is the remaining experimental work. See
-[the project plan](docs/PROJECT_PLAN.md) for its scope.
+- Synthetic correctness tests (including a multi-rank MPI test) and saved HIGGS
+  reference results.
 
 ## How the hybrid version works
 
 1. MPI-IO loads a contiguous, non-overlapping block of points on each rank.
    Remainder rows are assigned to the first ranks.
 2. Every rank starts with the same centroids broadcast from rank 0.
-3. OpenMP threads on each rank assign points to their nearest centroids and
-   accumulate private cluster sums, counts, SSE, and changed assignments.
-4. Each rank combines its threads' values. `MPI_Allreduce` then combines the
-   values across ranks so all ranks update to the same centroids.
+3. OpenMP threads on each rank split the rank's block the same way and run the
+   shared assignment kernel, each accumulating private cluster sums, counts,
+   SSE, and changed assignments in its own cache-line-padded buffer.
+4. Each rank adds its threads' buffers. The sums, counts, changed count, and
+   SSE are packed into one array of doubles, and a single `MPI_Allreduce`
+   combines it across ranks so all ranks update to the same centroids.
 5. The loop ends when fewer than 0.1% of assignments change or the iteration
    limit is reached. MPI calls occur outside OpenMP regions.
 
-The sequential, OpenMP, MPI, and hybrid modes use the same dataset, seed,
-starting centroids, and stopping rule for comparable results.
+The four programs differ only in two choices: the assignment step (one thread
+or OpenMP threads) and the reduction (none or `MPI_Allreduce`). Everything else
+in Lloyd's loop is the same code. `src/kmeans/kernel.cpp`, which holds the
+distance and assignment loop, is compiled once without OpenMP and linked into
+every program, so the sequential program, each OpenMP thread, and each MPI rank
+execute the same machine code. The sequential, OpenMP, MPI, and hybrid modes
+use the same dataset, seed, starting centroids, and stopping rule.
 
 ## Requirements
 
@@ -82,9 +91,10 @@ make test
 ./build/higgs_dataset inspect --full-scan
 ```
 
-`make test` should end with `online statistics test passed`,
-`sequential test passed`, and `OpenMP comparison passed`. The full scan should
-report 11,000,000 valid rows and 28 features.
+`make test` needs no dataset. It should end with `online statistics test
+passed`, `sequential test passed`, `OpenMP comparison passed`, and `MPI
+comparison passed`. The full scan should report 11,000,000 valid rows and 28
+features.
 
 Create the binary input once (allow several gigabytes of free disk space):
 
@@ -120,10 +130,10 @@ and a maximum of 100 iterations. They can be run independently:
 ./build/kmeans_openmp --threads 4 --clusters 16 \
   --output results/openmp_1m_k16_t4.json
 
-mpirun -np 4 ./build/kmeans_mpi --clusters 16 \
+mpirun --bind-to none -np 4 ./build/kmeans_mpi --clusters 16 \
   --output results/mpi_1m_k16_p4.json
 
-mpirun -np 2 ./build/kmeans_hybrid --threads 2 --clusters 16 \
+mpirun --bind-to none -np 2 ./build/kmeans_hybrid --threads 2 --clusters 16 \
   --output results/hybrid_1m_k16_p2_t2.json
 ```
 
@@ -131,6 +141,12 @@ In the last command, `-np 2` launches two MPI processes and `--threads 2`
 starts two OpenMP threads inside each process: four workers in total.
 `--clusters 16` is the number of groups K-Means forms; it is unrelated to
 thread count.
+
+Always pass `--bind-to none` to `mpirun` for the hybrid program. When Open MPI
+starts two or fewer processes it pins each one to a single core by default, so
+all of that process's OpenMP threads would share one core. The experiment
+runner uses `--bind-to none` for the MPI program too, so every variant is
+scheduled the same way.
 
 Each run prints a line per iteration with the changed assignments, changed
 fraction, assignment SSE, and empty-cluster count. The final line reports rows,
@@ -145,6 +161,10 @@ To use all 11 million points, add these options to any of the commands above:
 --metadata dataset/processed/higgs_f32.metadata.json
 ```
 
+Add `--rows N` to cluster only the first N rows of the chosen binary. Every
+prefix of the full binary shares the full dataset's normalization, which is
+what the weak-scaling experiments use.
+
 Other options are `--clusters`, `--max-iterations`, `--tolerance`, `--seed`,
 and `--init-sample-size`. The OpenMP and hybrid programs also accept
 `--threads`. Results from runs with the same input and settings should match
@@ -155,27 +175,23 @@ with hardware and process/thread placement; use repeated runs for benchmarks.
 
 The [experiment guide](experiments/README.md) explains how to install the
 Python plotting dependency from `requirements.txt` and run resumable
-three-repeat benchmarks. The runner saves raw JSON, a median-time/speedup/
-efficiency CSV, and Matplotlib PNG graphs under `experiments/`.
-
-Measured one-million-row results are currently available for the K=16 scaling
-grid and a K=64 comparison of the four execution modes. K=64 reached the
-100-iteration cap in every measured run; K=256 and full-data benchmark grids
-have not been measured yet. The runner can resume those longer experiments
-without repeating completed runs. No final report document is included.
+three-repeat benchmarks. The runner covers strong scaling (fixed dataset, 1-16
+workers) and weak scaling (fixed rows per worker, 1-8 workers), and saves raw
+JSON, median-time/speedup/efficiency CSVs, and Matplotlib PNG graphs under
+`experiments/`.
 
 ## Project structure
 
 ```text
-include/kmeans/      Public C headers
+include/kmeans/      Public C++ headers
 src/dataset/         HIGGS archive reading and validation
 src/preprocessing/   Feature statistics and binary conversion
-src/kmeans/          Sequential, OpenMP, MPI, and hybrid computation
+src/kmeans/          Shared kernel and Lloyd loop; OpenMP and MPI layers
 src/tools/           Command-line entry points
 tests/               Correctness tests
 docs/                Project plan and binary format
 experiments/         Benchmark runner, measurements, and PNG graphs
-results/             Saved run results (tracked in Git)
+results/             Saved reference runs (tracked in Git)
 dataset/             Local source and processed data (ignored by Git)
 build/               Generated executables and objects (ignored by Git)
 ```
