@@ -19,7 +19,10 @@ int kmeans_write_result(const char *path, const KMeansMatrix *matrix,
                         double loading_seconds, const char *variant, int processes,
                         int threads) {
     FILE *stream = fopen(path, "w");
-    if (!stream) { perror(path); return -1; }
+    if (!stream) {
+        perror(path);
+        return -1;
+    }
     fprintf(stream, "{\n  \"variant\": \"%s\",\n  \"processes\": %d,\n  \"threads\": %d,\n"
             "  \"rows\": %" PRIu64 ",\n  \"features\": %d,\n"
             "  \"clusters\": %d,\n  \"seed\": %" PRIu64 ",\n"

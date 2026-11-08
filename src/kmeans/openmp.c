@@ -35,7 +35,9 @@ int kmeans_openmp(const KMeansMatrix *matrix, const KMeansConfig *config,
     uint64_t *changes = calloc((size_t)threads, sizeof(uint64_t));
     double *errors = calloc((size_t)threads, sizeof(double));
     if (!result->initial_centroids || !result->centroids || !result->counts ||
-        !assignments || !sums || !counts || !changes || !errors) goto fail;
+        !assignments || !sums || !counts || !changes || !errors) {
+        goto fail;
+    }
     memset(assignments, 0xff, matrix->rows * sizeof(int));
     double start = omp_get_wtime();
     if (kmeans_initialize(matrix, config, result->centroids)) goto fail;
@@ -48,6 +50,7 @@ int kmeans_openmp(const KMeansMatrix *matrix, const KMeansConfig *config,
         memset(counts, 0, (size_t)threads * clusters * sizeof(uint64_t));
         memset(changes, 0, (size_t)threads * sizeof(uint64_t));
         memset(errors, 0, (size_t)threads * sizeof(double));
+        /* Each thread writes only to its own sums and counts. */
         #pragma omp parallel num_threads(threads)
         {
             int tid = omp_get_thread_num();
@@ -63,7 +66,10 @@ int kmeans_openmp(const KMeansMatrix *matrix, const KMeansConfig *config,
                 for (int cluster = 1; cluster < clusters; ++cluster) {
                     double candidate = distance2(point,
                         result->centroids + (size_t)cluster * dims, dims);
-                    if (candidate < best) { best = candidate; nearest = cluster; }
+                    if (candidate < best) {
+                        best = candidate;
+                        nearest = cluster;
+                    }
                 }
                 local_sse += best;
                 if (assignments[row] != nearest) ++local_changed;
@@ -92,7 +98,10 @@ int kmeans_openmp(const KMeansMatrix *matrix, const KMeansConfig *config,
         }
         int empty = 0;
         for (int cluster = 0; cluster < clusters; ++cluster) {
-            if (!result->counts[cluster]) { ++empty; continue; }
+            if (!result->counts[cluster]) {
+                ++empty;
+                continue;
+            }
             for (int d = 0; d < dims; ++d)
                 result->centroids[(size_t)cluster * dims + d] =
                     sums[(size_t)cluster * dims + d] / result->counts[cluster];
@@ -118,10 +127,18 @@ int kmeans_openmp(const KMeansMatrix *matrix, const KMeansConfig *config,
         final_sse += best;
     }
     result->sse = final_sse;
-    free(assignments); free(sums); free(counts); free(changes); free(errors);
+    free(assignments);
+    free(sums);
+    free(counts);
+    free(changes);
+    free(errors);
     return 0;
 fail:
-    free(assignments); free(sums); free(counts); free(changes); free(errors);
+    free(assignments);
+    free(sums);
+    free(counts);
+    free(changes);
+    free(errors);
     kmeans_free_result(result);
     return -1;
 }

@@ -22,7 +22,10 @@ int main(void) {
         memcmp(a.centroids, b.centroids, 2 * 28 * sizeof(double)) == 0;
     kmeans_free_result(&a);
     kmeans_free_result(&b);
-    if (!good) { fputs("sequential test failed\n", stderr); return 1; }
+    if (!good) {
+        fputs("sequential test failed\n", stderr);
+        return 1;
+    }
     puts("sequential test passed");
     return 0;
 }

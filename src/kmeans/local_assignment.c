@@ -14,7 +14,9 @@ static double distance2(const float *point, const double *center, int dimensions
 
 int local_assignment_init(LocalAssignment *work, int threads, int clusters, int dimensions) {
     memset(work, 0, sizeof *work);
-    if (threads < 1 || clusters < 1 || dimensions < 1) return -1;
+    if (threads < 1 || clusters < 1 || dimensions < 1) {
+        return -1;
+    }
     work->threads = threads;
     work->clusters = clusters;
     work->dimensions = dimensions;
@@ -49,6 +51,7 @@ void local_assignment_run(LocalAssignment *work, const float *points, uint64_t r
     memset(work->thread_counts, 0, (size_t)work->threads * clusters * sizeof(uint64_t));
     memset(work->thread_changes, 0, (size_t)work->threads * sizeof(uint64_t));
     memset(work->thread_errors, 0, (size_t)work->threads * sizeof(double));
+    /* One private accumulator per thread avoids writes to shared cluster totals. */
     #pragma omp parallel num_threads(work->threads)
     {
         int tid = omp_get_thread_num();
@@ -64,7 +67,10 @@ void local_assignment_run(LocalAssignment *work, const float *points, uint64_t r
             for (int cluster = 1; cluster < clusters; ++cluster) {
                 double candidate = distance2(point,
                     centroids + (size_t)cluster * dimensions, dimensions);
-                if (candidate < best) { best = candidate; nearest = cluster; }
+                if (candidate < best) {
+                    best = candidate;
+                    nearest = cluster;
+                }
             }
             private_sse += best;
             if (assignments[row] != nearest) ++private_changed;
@@ -76,6 +82,7 @@ void local_assignment_run(LocalAssignment *work, const float *points, uint64_t r
         work->thread_changes[tid] = private_changed;
         work->thread_errors[tid] = private_sse;
     }
+    /* Combine thread results once, before the rank participates in MPI. */
     memset(sums, 0, cells * sizeof(double));
     memset(counts, 0, (size_t)clusters * sizeof(uint64_t));
     *changed = 0;

@@ -18,7 +18,10 @@ static int metadata_number(const char *text, const char *key, uint64_t *value) {
 
 int kmeans_metadata_dimensions(const char *metadata, uint64_t *rows_out, int *dimensions_out) {
     FILE *meta = fopen(metadata, "rb");
-    if (!meta) { perror(metadata); return -1; }
+    if (!meta) {
+        perror(metadata);
+        return -1;
+    }
     char text[8192];
     size_t length = fread(text, 1, sizeof text - 1, meta);
     int too_large = !feof(meta);
@@ -41,7 +44,9 @@ int kmeans_load_matrix(const char *binary, const char *metadata, KMeansMatrix *m
     memset(matrix, 0, sizeof *matrix);
     uint64_t rows;
     int dimensions;
-    if (kmeans_metadata_dimensions(metadata, &rows, &dimensions)) return -1;
+    if (kmeans_metadata_dimensions(metadata, &rows, &dimensions)) {
+        return -1;
+    }
     struct stat info;
     size_t bytes = (size_t)rows * (size_t)dimensions * sizeof(float);
     if (stat(binary, &info) || info.st_size < 0 || (uint64_t)info.st_size != bytes) {
@@ -49,7 +54,10 @@ int kmeans_load_matrix(const char *binary, const char *metadata, KMeansMatrix *m
         return -1;
     }
     FILE *stream = fopen(binary, "rb");
-    if (!stream) { perror(binary); return -1; }
+    if (!stream) {
+        perror(binary);
+        return -1;
+    }
     float *points = malloc(bytes);
     if (!points || fread(points, 1, bytes, stream) != bytes) {
         fprintf(stderr, "error: cannot load matrix\n");

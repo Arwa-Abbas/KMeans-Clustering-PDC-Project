@@ -9,6 +9,7 @@ void online_stats_init(OnlineStats *stats) {
 
 void online_stats_update(OnlineStats *stats,
                          const float values[HIGGS_FEATURE_COLUMNS]) {
+    /* Welford's update avoids subtracting large, nearly equal sums. */
     ++stats->count;
     double count = (double)stats->count;
     for (int feature = 0; feature < HIGGS_FEATURE_COLUMNS; ++feature) {

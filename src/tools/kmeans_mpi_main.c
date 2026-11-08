@@ -9,7 +9,9 @@
 static int positive(const char *text, uint64_t *value) {
     char *end;
     errno = 0;
-    if (*text == '-') return -1;
+    if (*text == '-') {
+        return -1;
+    }
     *value = strtoull(text, &end, 10);
     return errno || end == text || *end || !*value ? -1 : 0;
 }
@@ -19,7 +21,9 @@ int main(int argc, char **argv) {
     MPI_Init_thread(&argc, &argv, MPI_THREAD_FUNNELED, &provided);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &processes);
-    if (provided < MPI_THREAD_FUNNELED) MPI_Abort(MPI_COMM_WORLD, 2);
+    if (provided < MPI_THREAD_FUNNELED) {
+        MPI_Abort(MPI_COMM_WORLD, 2);
+    }
     const char *data = "dataset/processed/higgs_1m_f32.bin";
     const char *metadata = "dataset/processed/higgs_1m_f32.metadata.json";
     const char *output = NULL;
@@ -69,14 +73,16 @@ int main(int argc, char **argv) {
                "loading_seconds=%.3f initialization_seconds=%.3f computation_seconds=%.3f\n",
                rows, processes, threads, config.clusters, result.iterations, result.sse,
                loading_seconds, result.initialization_seconds, result.computation_seconds);
-        if (output) status = kmeans_write_result(output, &description, &config,
-                                                &result, loading_seconds,
+        if (output) {
+            status = kmeans_write_result(output, &description, &config,
+                                        &result, loading_seconds,
 #ifdef KMEANS_HYBRID_CLI
-                                                "hybrid",
+                                        "hybrid",
 #else
-                                                "mpi",
+                                        "mpi",
 #endif
-                                                processes, threads);
+                                        processes, threads);
+        }
     }
     kmeans_free_result(&result);
     MPI_Finalize();

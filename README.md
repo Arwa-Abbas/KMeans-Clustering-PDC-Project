@@ -1,338 +1,174 @@
-# Parallel K-Means Clustering on the HIGGS Dataset
+# Parallel K-Means Clustering on Large Datasets
 
-A Parallel and Distributed Computing project that implements Lloyd's K-Means
-in C and compares four execution models on a large, high-dimensional dataset:
+A Parallel and Distributed Computing (PDC) course project that clusters the
+11-million-point HIGGS dataset with K-Means in C. The main implementation is
+hybrid: MPI processes divide the data, and OpenMP threads calculate distances
+within each process. Sequential, OpenMP-only, and MPI-only programs provide
+correctness and performance comparisons.
 
-1. sequential C;
-2. OpenMP shared-memory parallelism;
-3. MPI distributed-memory parallelism; and
-4. hybrid MPI + OpenMP parallelism.
+## Features
 
-The project uses the 11-million-row HIGGS dataset to study correctness,
-runtime, speedup, efficiency, scalability, and different cluster counts.
+- Four K-Means execution modes: sequential, OpenMP, MPI, and MPI + OpenMP.
+- C11 implementation with GCC, Open MPI, OpenMP, zlib, and GNU Make.
+- Streaming validation and z-score normalization of the HIGGS archive.
+- Compact row-major `float32` matrix with a metadata file for MPI-IO.
+- Fixed-seed K-Means++ initialization from the first 100,000 points.
+- Squared Euclidean distance, configurable K and iteration limit, and a
+  changed-assignment stopping rule (0.1% by default).
+- Per-run JSON with initial/final centroids, SSE, iterations, and separate
+  loading, initialization, and computation timings.
+- Synthetic correctness tests and saved HIGGS reference results.
 
-## Project objectives
+The full analysis of K=16, 64, and 256, repeated benchmark runs, speedup,
+efficiency, and plots is the remaining experimental work. See
+[the project plan](docs/PROJECT_PLAN.md) for its scope.
 
-- Process a dataset that is too large for convenient CSV-based experiments.
-- Keep all implementations algorithmically comparable and deterministic.
-- Distribute contiguous point blocks across MPI processes.
-- Parallelize point-to-centroid distance calculations with OpenMP.
-- Combine cluster sums, counts, SSE, and convergence data with MPI collectives.
-- Compare sequential, OpenMP, MPI, and hybrid performance.
-- Report runtime, speedup, efficiency, convergence, and final SSE.
+## How the hybrid version works
 
-## Project phases
+1. MPI-IO loads a contiguous, non-overlapping block of points on each rank.
+   Remainder rows are assigned to the first ranks.
+2. Every rank starts with the same centroids broadcast from rank 0.
+3. OpenMP threads on each rank assign points to their nearest centroids and
+   accumulate private cluster sums, counts, SSE, and changed assignments.
+4. Each rank combines its threads' values. `MPI_Allreduce` then combines the
+   values across ranks so all ranks update to the same centroids.
+5. The loop ends when fewer than 0.1% of assignments change or the iteration
+   limit is reached. MPI calls occur outside OpenMP regions.
 
-| Phase | Work | Status |
-|---|---|---|
-| 1 | Dataset inspection, validation, and safe extraction tooling | **Done** |
-| 2 | Streaming normalization and `float32` binary conversion | **Done** |
-| 3 | Deterministic sequential K-Means reference implementation | **Done** |
-| 4 | Shared-memory K-Means using OpenMP | **Done** |
-| 5 | Distributed-memory K-Means using MPI and MPI-IO | **Done** |
-| 6 | Hybrid MPI + OpenMP K-Means | **Done** |
-| 7 | Experiments, scalability analysis, graphs, and final report | **Remaining** |
+The sequential, OpenMP, MPI, and hybrid modes use the same dataset, seed,
+starting centroids, and stopping rule for comparable results.
 
-Detailed deliverables and validation gates are documented in
-[docs/PROJECT_PLAN.md](docs/PROJECT_PLAN.md).
+## Requirements
 
-## Parallel design
-
-In the final hybrid implementation, each MPI process will load a contiguous
-block of normalized points through MPI-IO. Every process will keep a replicated
-copy of the centroids. OpenMP threads inside each process will perform local
-point assignment and maintain thread-local cluster sums and counts.
-
-After each iteration, `MPI_Allreduce` will combine the local sums, counts, SSE,
-and number of changed assignments. All four implementations will use the same
-initial centroids, convergence rule, empty-cluster policy, and input data.
-
-## Dataset
-
-The project uses the
-[HIGGS dataset from the UCI Machine Learning Repository](https://archive.ics.uci.edu/dataset/280/higgs).
-
-```text
-Rows:              11,000,000
-CSV columns:       29
-Label columns:      1 (excluded from clustering)
-Feature columns:   28
-Compressed size:   approximately 2.6 GB
-Processed size:    1,232,000,000 bytes
-Processed type:    little-endian float32
-Processed layout:  headerless row-major matrix
-```
-
-The full local archive validation produced:
-
-```text
-label 0:  5,170,877 rows
-label 1:  5,829,123 rows
-status:   valid
-```
-
-Dataset files and generated binaries are intentionally excluded from Git.
-
-## Platform and requirements
-
-The project targets Ubuntu with GCC, OpenMP, Open MPI, MPI-IO, GNU Make, and
-zlib. Ubuntu 24.04 or 22.04 under WSL2 is recommended for Windows users.
-
-Install WSL from an Administrator PowerShell window if necessary:
+Use Ubuntu 24.04 or 22.04. On Windows, Ubuntu under WSL2 works. Install it
+from an Administrator PowerShell window only if it is not already installed:
 
 ```powershell
 wsl --install -d Ubuntu-24.04
 ```
 
-Install the project dependencies inside Ubuntu:
+Enter Ubuntu with `wsl -d Ubuntu-24.04`, then install the build tools:
 
 ```bash
 sudo apt update
 sudo apt install -y build-essential openmpi-bin libopenmpi-dev zlib1g-dev
 ```
 
-For meaningful I/O benchmarks, keep the repository in the Ubuntu filesystem,
-such as `~/projects/KMeans-Clustering-PDC-Project`. Access through `/mnt/c`
-works but can be considerably slower.
+For meaningful performance measurements, place the repository in Ubuntu's
+Linux filesystem (for example `~/projects/KMeans-Clustering-PDC-Project`).
+Running from `/mnt/c` works, but its file I/O can distort timing.
 
 ## Setup after cloning
 
-1. Clone the repository:
-
-   ```bash
-   git clone https://github.com/Arwa-Abbas/KMeans-Clustering-PDC-Project.git
-   cd KMeans-Clustering-PDC-Project
-   ```
-
-2. Create the dataset directory:
-
-   ```bash
-   mkdir -p dataset
-   ```
-
-3. Download `HIGGS.csv.gz` from the
-   [official UCI page](https://archive.ics.uci.edu/dataset/280/higgs) and place
-   it at this exact relative path:
-
-   ```text
-   dataset/HIGGS.csv.gz
-   ```
-
-4. Build and run the tests:
-
-   ```bash
-   make
-   make test
-   ```
-
-5. Validate the complete compressed dataset:
-
-   ```bash
-   ./build/higgs_dataset inspect --full-scan
-   ```
-
-6. Generate the normalized binary matrix:
-
-   ```bash
-   ./build/preprocess_higgs
-   ```
-
-   Use `--overwrite` only when intentionally replacing an existing processed
-   binary. Keep at least 5 GiB free. Full CSV extraction is not required.
-
-## Available dataset tools
-
-Inspect a 1,000-row sample:
+Run these commands in the Ubuntu terminal:
 
 ```bash
-./build/higgs_dataset inspect
+git clone https://github.com/Arwa-Abbas/KMeans-Clustering-PDC-Project.git
+cd KMeans-Clustering-PDC-Project
+mkdir -p dataset results
 ```
 
-Validate all 11 million compressed rows without keeping a CSV:
+Download `HIGGS.csv.gz` from the
+[UCI HIGGS dataset page](https://archive.ics.uci.edu/dataset/280/higgs) and
+place it at `dataset/HIGGS.csv.gz`. It has 11 million rows: the first CSV
+column is a label, followed by 28 features. The label is excluded from
+clustering. Dataset files are excluded from Git because of their size.
+
+Build and test:
 
 ```bash
+make
+make test
 ./build/higgs_dataset inspect --full-scan
 ```
 
-Optionally extract the CSV atomically:
+`make test` should end with `online statistics test passed`,
+`sequential test passed`, and `OpenMP comparison passed`. The full scan should
+report 11,000,000 valid rows and 28 features.
+
+Create the binary input once (allow several gigabytes of free disk space):
 
 ```bash
-./build/higgs_dataset extract
+./build/preprocess_higgs
 ```
 
-Generate or replace the processed matrix:
+This writes `dataset/processed/higgs_f32.bin` and its metadata. The full binary
+has exactly `11,000,000 * 28 * 4 = 1,232,000,000` bytes. CSV extraction is
+optional; the preprocessor reads the compressed archive directly. Use
+`--overwrite` only when intentionally regenerating an existing binary. For
+the binary layout and MPI-IO offset, see [the format description](docs/BINARY_FORMAT.md).
+
+Create the one-million-row development input used by the commands below:
 
 ```bash
-./build/preprocess_higgs --overwrite
+./build/preprocess_higgs --max-rows 1000000 \
+  --output dataset/processed/higgs_1m_f32.bin \
+  --metadata dataset/processed/higgs_1m_f32.metadata.json
 ```
 
-The preprocessor performs two streaming passes. The first uses Welford's
-algorithm to calculate the mean and population standard deviation of every
-feature. The second excludes the label, applies z-score normalization, and
-writes each value as `float32`.
+This subset is normalized using statistics from its own first million rows.
 
-Generated outputs:
+## Run K-Means
 
-```text
-dataset/processed/higgs_f32.bin
-dataset/processed/higgs_f32.metadata.json
-dataset/processed/higgs_1m_f32.bin
-dataset/processed/higgs_1m_f32.metadata.json
-```
-
-The complete binary must contain exactly:
-
-```text
-11,000,000 * 28 * 4 = 1,232,000,000 bytes
-```
-
-The preprocessor checks the exact size and compares the first 1,000 stored rows
-with freshly parsed and normalized source values. The binary layout and future
-MPI-IO offset calculation are documented in
-[docs/BINARY_FORMAT.md](docs/BINARY_FORMAT.md).
-
-## Sequential K-Means reference
-
-The default run uses the one-million-row development matrix, K=16, seed 42,
-100,000 initialization samples, a 0.1% changed-assignment threshold, and a
-100-iteration cap:
+These examples use the one-million-row development binary, K=16, seed 42,
+and a maximum of 100 iterations. They can be run independently:
 
 ```bash
-./build/kmeans_sequential --output results/sequential_1m_k16.json
-```
+./build/kmeans_sequential --clusters 16 \
+  --output results/sequential_1m_k16.json
 
-Create `results/` first with `mkdir -p results`. To use the complete dataset:
-
-```bash
-./build/kmeans_sequential \
-  --data dataset/processed/higgs_f32.bin \
-  --metadata dataset/processed/higgs_f32.metadata.json \
-  --clusters 16 \
-  --output results/sequential_11m_k16.json
-```
-
-Options include `--clusters`, `--seed`, `--init-sample-size`,
-`--max-iterations`, and `--tolerance` (a fraction, so `0.001` is 0.1%). The
-result JSON contains starting and final centroids, final SSE, iteration count,
-and separate loading, initialization, and iteration timings. The printed SSE
-for an iteration uses centroids before that iteration's update; `final_sse` is
-recalculated against the final centroids. Loading and initialization are
-excluded from the measured computation time.
-
-The sequential reference passed the synthetic test, converged in 48 iterations
-on one million points, and converged in 41 iterations on the full 11 million
-points at K=16. A repeat run on one million points produced identical final
-centroids and SSE. Additional K values are part of Phase 7 experiments.
-
-## OpenMP K-Means
-
-The OpenMP executable shares the matrix loader, fixed-seed K-Means++
-initialization, and result format with the sequential reference. Each thread
-assigns a static block of points and accumulates private cluster sums, counts,
-changed assignments, and SSE. These are combined after the parallel region.
-
-```bash
-mkdir -p results
 ./build/kmeans_openmp --threads 4 --clusters 16 \
   --output results/openmp_1m_k16_t4.json
-```
 
-For the full dataset, supply `--data dataset/processed/higgs_f32.bin` and
-`--metadata dataset/processed/higgs_f32.metadata.json`. Results for 1, 2, 4,
-8, and 16 threads on one million rows, plus a four-thread full-data result, are
-stored in `results/`. All matched the sequential iteration counts; maximum
-centroid differences were below `6e-15`. The recorded timings are individual
-runs on WSL and are not the median-of-three benchmark results planned for
-Phase 7.
-
-## MPI K-Means
-
-The MPI executable uses collective MPI-IO to read contiguous, non-overlapping
-row blocks. The first ranks receive one extra row when the dataset size is not
-divisible by the process count. Rank 0 initializes the shared centroids from
-the same first 100,000 points and fixed seed as the other variants, then
-broadcasts them. Each rank assigns its local points; `MPI_Allreduce` combines
-cluster sums, counts, changed assignments, and SSE after each iteration.
-
-```bash
 mpirun -np 4 ./build/kmeans_mpi --clusters 16 \
   --output results/mpi_1m_k16_p4.json
-```
 
-For all 11 million rows:
-
-```bash
-mpirun -np 4 ./build/kmeans_mpi \
-  --data dataset/processed/higgs_f32.bin \
-  --metadata dataset/processed/higgs_f32.metadata.json \
-  --clusters 16 --output results/mpi_11m_k16_p4.json
-```
-
-The one-million-row runs with 1, 2, 3, 4, and 8 ranks converged in 48
-iterations; the three-rank case also checks uneven row partitioning. The
-four-rank full-data run converged in 41 iterations. Their final centroids
-matched the sequential reference within `6e-15`. Timings are individual WSL
-runs; formal repeat-run benchmarks belong to Phase 7.
-
-## Hybrid MPI + OpenMP K-Means
-
-The hybrid executable combines MPI row partitioning and MPI-IO with OpenMP
-point assignment inside every rank. Each OpenMP thread uses private cluster
-sums, counts, changed-assignment counts, and SSE; a rank combines these before
-the MPI reductions. MPI calls are made by the main thread outside the OpenMP
-regions (`MPI_THREAD_FUNNELED`).
-
-```bash
 mpirun -np 2 ./build/kmeans_hybrid --threads 2 --clusters 16 \
   --output results/hybrid_1m_k16_p2_t2.json
 ```
 
-This example runs two MPI processes with two OpenMP threads in each process:
-four workers in total. For the full dataset, pass the same `--data` and
-`--metadata` paths shown in the MPI example. The checked 2x2, 3x2, and 4x2
-one-million-row runs matched the sequential 48-iteration result. A 2x4 run on
-all 11 million rows matched the sequential 41-iteration result with maximum
-centroid difference below `5e-15`. Runtime is sensitive to CPU placement and
-WSL file I/O, so use the controlled repeated experiments in Phase 7 to draw
-speedup conclusions.
+In the last command, `-np 2` launches two MPI processes and `--threads 2`
+starts two OpenMP threads inside each process: four workers in total.
+`--clusters 16` is the number of groups K-Means forms; it is unrelated to
+thread count.
+
+Each run prints a line per iteration with the changed assignments, changed
+fraction, assignment SSE, and empty-cluster count. The final line reports rows,
+K, iterations, final SSE, and timings. The default stopping threshold is
+`--tolerance 0.001`, meaning 0.1% of points changed clusters. The final SSE is
+recalculated against the final centroids.
+
+To use all 11 million points, add these options to any of the commands above:
+
+```bash
+--data dataset/processed/higgs_f32.bin \
+--metadata dataset/processed/higgs_f32.metadata.json
+```
+
+Other options are `--clusters`, `--max-iterations`, `--tolerance`, `--seed`,
+and `--init-sample-size`. The OpenMP and hybrid programs also accept
+`--threads`. Results from runs with the same input and settings should match
+in SSE and centroids within floating-point tolerance. Computation times vary
+with hardware and process/thread placement; use repeated runs for benchmarks.
 
 ## Project structure
 
 ```text
-KMeans-Clustering-PDC-Project/
-|-- include/kmeans/       Public C headers
-|-- src/dataset/          HIGGS validation and streaming reader
-|-- src/preprocessing/    Statistics, normalization, and binary output
-|-- src/kmeans/            Matrix loader, Lloyd loops, MPI, local OpenMP assignment
-|-- src/tools/            Command-line program entry points
-|-- tests/                Focused C unit tests
-|-- docs/                 Project plan and binary format documentation
-|-- dataset/              Local source/processed data (ignored by Git)
-|-- results/              Reference runs and experiment output (tracked in Git)
-|-- build/                Compiled objects and executables (ignored by Git)
-|-- Makefile
-`-- README.md
+include/kmeans/      Public C headers
+src/dataset/         HIGGS archive reading and validation
+src/preprocessing/   Feature statistics and binary conversion
+src/kmeans/          Sequential, OpenMP, MPI, and hybrid computation
+src/tools/           Command-line entry points
+tests/               Correctness tests
+docs/                Project plan and binary format
+results/             Saved run results (tracked in Git)
+dataset/             Local source and processed data (ignored by Git)
+build/               Generated executables and objects (ignored by Git)
 ```
-
-Source files are separated by functionality. Closely related functions remain
-together rather than creating a separate file for every small function.
-
-## Reproducibility and performance rules
-
-- Use a fixed seed and identical starting centroids for every implementation.
-- Exclude data loading and preprocessing from K-Means compute timing.
-- Use squared Euclidean distance consistently.
-- Check parallel centroids and SSE against the sequential reference within a
-  documented floating-point tolerance.
-- Report the median of three benchmark runs.
-- Record compiler version, flags, hardware, process count, thread count, and
-  process/thread placement.
-- Treat recorded timing values as machine-specific; centroids and SSE are the
-  deterministic correctness reference for runs with matching data and settings.
-- Calculate speedup as `T1 / Tp` and efficiency as
-  `speedup / (MPI processes * OpenMP threads)`.
 
 ## Dataset citation
 
 Whiteson, D. (2014). *HIGGS*. UCI Machine Learning Repository.
 [https://doi.org/10.24432/C5V312](https://doi.org/10.24432/C5V312)
+
+PDC Course Project Made by Arwa Abbas and Nabira Khan.

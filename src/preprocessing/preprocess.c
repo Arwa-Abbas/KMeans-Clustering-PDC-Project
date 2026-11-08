@@ -18,6 +18,7 @@
 
 static int collect_statistics(const PreprocessOptions *options,
                               OnlineStats *stats) {
+    /* First pass: keep only 28 running means and variances in memory. */
     HiggsReader *reader = higgs_reader_open(options->archive_path);
     if (reader == NULL) {
         fprintf(stderr, "error: cannot open %s\n", options->archive_path);
@@ -45,6 +46,7 @@ static int collect_statistics(const PreprocessOptions *options,
 static int write_normalized_binary(const PreprocessOptions *options,
                                    const OnlineStats *stats,
                                    const double stddev[HIGGS_FEATURE_COLUMNS]) {
+    /* Second pass: write features in row-major order, without the label. */
     HiggsReader *reader = higgs_reader_open(options->archive_path);
     BinaryDatasetWriter writer;
     if (reader == NULL ||
@@ -90,6 +92,7 @@ static int write_normalized_binary(const PreprocessOptions *options,
 static int verify_binary(const PreprocessOptions *options,
                          const OnlineStats *stats,
                          const double stddev[HIGGS_FEATURE_COLUMNS]) {
+    /* Check both byte count and values read back from the finished file. */
     struct stat info;
     unsigned long long expected_bytes =
         stats->count * HIGGS_FEATURE_COLUMNS * sizeof(float);

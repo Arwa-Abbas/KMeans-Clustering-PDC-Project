@@ -20,7 +20,10 @@ int main(void) {
         if (fabs(sequential.centroids[i] - parallel.centroids[i]) > 1e-9) good = 0;
     kmeans_free_result(&sequential);
     kmeans_free_result(&parallel);
-    if (!good) { fputs("OpenMP comparison failed\n", stderr); return 1; }
+    if (!good) {
+        fputs("OpenMP comparison failed\n", stderr);
+        return 1;
+    }
     puts("OpenMP comparison passed");
     return 0;
 }

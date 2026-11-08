@@ -33,7 +33,9 @@ static double distance2(const float *point, const double *centroid, int dimensio
 int kmeans_initialize(const KMeansMatrix *matrix, const KMeansConfig *config,
                       double *centroids) {
     uint64_t sample = config->sample_size < matrix->rows ? config->sample_size : matrix->rows;
-    if (!sample || config->clusters < 1 || (uint64_t)config->clusters > sample) return -1;
+    if (!sample || config->clusters < 1 || (uint64_t)config->clusters > sample) {
+        return -1;
+    }
     double *nearest = malloc(sample * sizeof *nearest);
     if (!nearest) return -1;
     uint64_t state = config->seed;
@@ -53,7 +55,10 @@ int kmeans_initialize(const KMeansMatrix *matrix, const KMeansConfig *config,
             double cumulative = 0;
             for (uint64_t i = 0; i < sample; ++i) {
                 cumulative += nearest[i];
-                if (cumulative > target && nearest[i] > 0) { selected = i; break; }
+                if (cumulative > target && nearest[i] > 0) {
+                    selected = i;
+                    break;
+                }
             }
         } else {
             selected = random_u64(&state) % sample;
@@ -63,7 +68,9 @@ int kmeans_initialize(const KMeansMatrix *matrix, const KMeansConfig *config,
         for (int d = 0; d < dims; ++d) center[d] = point[d];
         for (uint64_t i = 0; i < sample; ++i) {
             double candidate = distance2(matrix->points + i * (uint64_t)dims, center, dims);
-            if (candidate < nearest[i]) nearest[i] = candidate;
+            if (candidate < nearest[i]) {
+                nearest[i] = candidate;
+            }
         }
     }
     free(nearest);
@@ -83,7 +90,9 @@ int kmeans_sequential(const KMeansMatrix *matrix, const KMeansConfig *config,
     double *sums = calloc(cells, sizeof(double));
     int *assignments = malloc(matrix->rows * sizeof(int));
     if (!result->initial_centroids || !result->centroids || !result->counts ||
-        !sums || !assignments) goto fail;
+        !sums || !assignments) {
+        goto fail;
+    }
     memset(assignments, 0xff, matrix->rows * sizeof(int));
     double start = seconds();
     if (kmeans_initialize(matrix, config, result->centroids)) goto fail;
@@ -102,7 +111,10 @@ int kmeans_sequential(const KMeansMatrix *matrix, const KMeansConfig *config,
             for (int cluster = 1; cluster < config->clusters; ++cluster) {
                 double candidate = distance2(point, result->centroids +
                     (size_t)cluster * matrix->dimensions, matrix->dimensions);
-                if (candidate < best) { best = candidate; nearest = cluster; }
+                if (candidate < best) {
+                    best = candidate;
+                    nearest = cluster;
+                }
             }
             sse += best;
             if (assignments[row] != nearest) ++changed;
@@ -113,7 +125,10 @@ int kmeans_sequential(const KMeansMatrix *matrix, const KMeansConfig *config,
         }
         int empty = 0;
         for (int cluster = 0; cluster < config->clusters; ++cluster) {
-            if (!result->counts[cluster]) { ++empty; continue; }
+            if (!result->counts[cluster]) {
+                ++empty;
+                continue;
+            }
             for (int d = 0; d < matrix->dimensions; ++d)
                 result->centroids[(size_t)cluster * matrix->dimensions + d] =
                     sums[(size_t)cluster * matrix->dimensions + d] / result->counts[cluster];

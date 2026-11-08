@@ -19,7 +19,9 @@ static double seconds(void) {
 static int number(const char *text, uint64_t *value) {
     char *end;
     errno = 0;
-    if (*text == '-') return -1;
+    if (*text == '-') {
+        return -1;
+    }
     *value = strtoull(text, &end, 10);
     return errno || end == text || *end || !*value ? -1 : 0;
 }

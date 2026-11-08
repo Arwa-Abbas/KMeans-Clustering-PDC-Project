@@ -94,6 +94,7 @@ int binary_dataset_writer_write(
 }
 
 int binary_dataset_writer_finish(BinaryDatasetWriter *writer) {
+    /* Promote the partial file only after it has been fully written. */
     if (fclose(writer->stream) != 0) {
         writer->stream = NULL;
         return -1;

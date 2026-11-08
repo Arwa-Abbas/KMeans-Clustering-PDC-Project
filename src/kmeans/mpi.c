@@ -1,14 +1,12 @@
 #include "kmeans/mpi_kmeans.h"
 #include "kmeans/local_assignment.h"
 #include <inttypes.h>
-#include <limits.h>
-#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-/* Every rank executes the same collective sequence, including ranks with no rows. */
+/* All ranks make the same number of collective reads, even with uneven blocks. */
 static int collective_read(MPI_File file, uint64_t start, uint64_t rows,
                            int dims, float *points, MPI_Comm comm) {
     uint64_t remaining = rows * (uint64_t)dims;
@@ -46,6 +44,7 @@ int kmeans_mpi(const char *binary, const char *metadata, const KMeansConfig *con
     if (!all_valid) return -1;
     *global_rows = rows;
     *dimensions = dims;
+    /* Give one remainder row to each of the first ranks. */
     uint64_t base = rows / (uint64_t)processes;
     uint64_t extra = rows % (uint64_t)processes;
     uint64_t local_rows = base + ((uint64_t)rank < extra);
@@ -65,6 +64,7 @@ int kmeans_mpi(const char *binary, const char *metadata, const KMeansConfig *con
     int ready = points && assignments && local_sums && global_sums &&
         local_counts && result->counts && result->centroids && result->initial_centroids &&
         work_ready;
+    /* If any rank cannot allocate its block, every rank exits together. */
     MPI_Allreduce(&ready, &all_valid, 1, MPI_INT, MPI_MIN, comm);
     if (!all_valid) goto fail;
     memset(assignments, 0xff, local_rows * sizeof(int));
@@ -76,7 +76,10 @@ int kmeans_mpi(const char *binary, const char *metadata, const KMeansConfig *con
     MPI_File_get_size(file, &actual_bytes);
     int size_ok = actual_bytes == (MPI_Offset)(rows * (uint64_t)dims * sizeof(float));
     MPI_Allreduce(&size_ok, &all_valid, 1, MPI_INT, MPI_MIN, comm);
-    if (!all_valid) { MPI_File_close(&file); goto fail; }
+    if (!all_valid) {
+        MPI_File_close(&file);
+        goto fail;
+    }
     double started = MPI_Wtime();
     int read_ok = collective_read(file, start_row, local_rows, dims, points, comm) == 0;
     MPI_File_close(&file);
@@ -84,6 +87,7 @@ int kmeans_mpi(const char *binary, const char *metadata, const KMeansConfig *con
     if (!all_valid) goto fail;
     *loading_seconds = MPI_Wtime() - started;
 
+    /* Rank 0 uses the same first-point sample as the sequential reference. */
     started = MPI_Wtime();
     int init_ok = 1;
     if (rank == 0) {
@@ -115,6 +119,8 @@ int kmeans_mpi(const char *binary, const char *metadata, const KMeansConfig *con
         local_assignment_run(&work, points, local_rows, result->centroids,
                              assignments, local_sums, local_counts,
                              &local_changed, &local_sse);
+
+        /* OpenMP work is complete; only the main thread calls MPI. */
         MPI_Allreduce(local_sums, global_sums, (int)cells, MPI_DOUBLE, MPI_SUM, comm);
         MPI_Allreduce(local_counts, result->counts, config->clusters,
                       MPI_UINT64_T, MPI_SUM, comm);
@@ -122,7 +128,10 @@ int kmeans_mpi(const char *binary, const char *metadata, const KMeansConfig *con
         MPI_Allreduce(&local_sse, &sse, 1, MPI_DOUBLE, MPI_SUM, comm);
         int empty = 0;
         for (int c = 0; c < config->clusters; ++c) {
-            if (!result->counts[c]) { ++empty; continue; }
+            if (!result->counts[c]) {
+                ++empty;
+                continue;
+            }
             for (int d = 0; d < dims; ++d)
                 result->centroids[(size_t)c * dims + d] =
                     global_sums[(size_t)c * dims + d] / result->counts[c];
@@ -141,11 +150,19 @@ int kmeans_mpi(const char *binary, const char *metadata, const KMeansConfig *con
                                                   result->centroids);
     MPI_Allreduce(&local_final_sse, &result->sse, 1, MPI_DOUBLE, MPI_SUM, comm);
     local_assignment_free(&work);
-    free(points); free(assignments); free(local_sums); free(global_sums); free(local_counts);
+    free(points);
+    free(assignments);
+    free(local_sums);
+    free(global_sums);
+    free(local_counts);
     return 0;
 fail:
     local_assignment_free(&work);
-    free(points); free(assignments); free(local_sums); free(global_sums); free(local_counts);
+    free(points);
+    free(assignments);
+    free(local_sums);
+    free(global_sums);
+    free(local_counts);
     kmeans_free_result(result);
     return -1;
 }
