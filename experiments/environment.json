@@ -1,0 +1,15 @@
+{
+  "platform": "Linux-6.18.33.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "python": "3.12.3",
+  "processor": "x86_64",
+  "logical_cpus": 24,
+  "gcc": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+  "mpicc": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+  "mpirun": "mpirun (Open MPI) 4.1.6",
+  "git_commit": "31b9a9596fdfddb048f3d6949de4f7b9d980efbf",
+  "location": "/mnt/c/Arwa/FAST/Semester 7 (Fall 2026)/Parallel Distributed Computing (PDC)/kmeans_clustering",
+  "dataset_bytes": {
+    "1m": 112000000,
+    "11m": 1232000000
+  }
+}

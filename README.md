@@ -1,4 +1,4 @@
-# Parallel K-Means Clustering on Large Datasets
+# Parallel K-Means Clustering on Large Dataset (HIGGS Dataset)
 
 A Parallel and Distributed Computing (PDC) course project that clusters the
 11-million-point HIGGS dataset with K-Means in C. The main implementation is
@@ -151,6 +151,19 @@ and `--init-sample-size`. The OpenMP and hybrid programs also accept
 in SSE and centroids within floating-point tolerance. Computation times vary
 with hardware and process/thread placement; use repeated runs for benchmarks.
 
+## Experiments and graphs
+
+The [experiment guide](experiments/README.md) explains how to install the
+Python plotting dependency from `requirements.txt` and run resumable
+three-repeat benchmarks. The runner saves raw JSON, a median-time/speedup/
+efficiency CSV, and Matplotlib PNG graphs under `experiments/`.
+
+Measured one-million-row results are currently available for the K=16 scaling
+grid and a K=64 comparison of the four execution modes. K=64 reached the
+100-iteration cap in every measured run; K=256 and full-data benchmark grids
+have not been measured yet. The runner can resume those longer experiments
+without repeating completed runs. No final report document is included.
+
 ## Project structure
 
 ```text
@@ -161,6 +174,7 @@ src/kmeans/          Sequential, OpenMP, MPI, and hybrid computation
 src/tools/           Command-line entry points
 tests/               Correctness tests
 docs/                Project plan and binary format
+experiments/         Benchmark runner, measurements, and PNG graphs
 results/             Saved run results (tracked in Git)
 dataset/             Local source and processed data (ignored by Git)
 build/               Generated executables and objects (ignored by Git)
