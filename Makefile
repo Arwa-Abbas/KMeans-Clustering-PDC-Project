@@ -22,13 +22,39 @@ KMEANS_TOOL := $(BUILD_DIR)/kmeans_sequential
 KMEANS_TEST := $(BUILD_DIR)/test_sequential
 OPENMP_TOOL := $(BUILD_DIR)/kmeans_openmp
 OPENMP_TEST := $(BUILD_DIR)/test_openmp
+MPI_TOOL := $(BUILD_DIR)/kmeans_mpi
+HYBRID_TOOL := $(BUILD_DIR)/kmeans_hybrid
 ALL_OBJECTS += $(KMEANS_OBJECTS) $(OBJECT_DIR)/tools/kmeans_sequential_main.o $(OBJECT_DIR)/tests/test_sequential.o
 ALL_OBJECTS += $(OBJECT_DIR)/tools/kmeans_openmp_main.o $(OBJECT_DIR)/kmeans/openmp.o $(OBJECT_DIR)/tests/test_openmp.o
+ALL_OBJECTS += $(OBJECT_DIR)/tools/kmeans_mpi_main.o $(OBJECT_DIR)/kmeans/mpi.o
+ALL_OBJECTS += $(OBJECT_DIR)/tools/kmeans_hybrid_main.o $(OBJECT_DIR)/kmeans/local_assignment.o
 DEPENDENCIES := $(ALL_OBJECTS:.o=.d)
 
 .PHONY: all test clean
 
-all: $(DATASET_TOOL) $(PREPROCESS_TOOL) $(KMEANS_TOOL) $(OPENMP_TOOL)
+all: $(DATASET_TOOL) $(PREPROCESS_TOOL) $(KMEANS_TOOL) $(OPENMP_TOOL) $(MPI_TOOL) $(HYBRID_TOOL)
+
+$(HYBRID_TOOL): $(OBJECT_DIR)/tools/kmeans_hybrid_main.o $(OBJECT_DIR)/kmeans/mpi.o $(OBJECT_DIR)/kmeans/local_assignment.o $(KMEANS_OBJECTS) | $(BUILD_DIR)
+	mpicc $^ -o $@ -fopenmp -lm
+
+$(OBJECT_DIR)/tools/kmeans_hybrid_main.o: src/tools/kmeans_mpi_main.c
+	mkdir -p $(dir $@)
+	mpicc $(CPPFLAGS) $(CFLAGS) -fopenmp -DKMEANS_HYBRID_CLI -MMD -MP -c $< -o $@
+
+$(OBJECT_DIR)/kmeans/local_assignment.o: src/kmeans/local_assignment.c
+	mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -fopenmp -MMD -MP -c $< -o $@
+
+$(MPI_TOOL): $(OBJECT_DIR)/tools/kmeans_mpi_main.o $(OBJECT_DIR)/kmeans/mpi.o $(OBJECT_DIR)/kmeans/local_assignment.o $(KMEANS_OBJECTS) | $(BUILD_DIR)
+	mpicc $^ -o $@ -fopenmp -lm
+
+$(OBJECT_DIR)/tools/kmeans_mpi_main.o: src/tools/kmeans_mpi_main.c
+	mkdir -p $(dir $@)
+	mpicc $(CPPFLAGS) $(CFLAGS) -fopenmp -MMD -MP -c $< -o $@
+
+$(OBJECT_DIR)/kmeans/mpi.o: src/kmeans/mpi.c
+	mkdir -p $(dir $@)
+	mpicc $(CPPFLAGS) $(CFLAGS) -fopenmp -MMD -MP -c $< -o $@
 
 $(OPENMP_TOOL): $(OBJECT_DIR)/tools/kmeans_openmp_main.o $(KMEANS_OBJECTS) $(OBJECT_DIR)/kmeans/openmp.o | $(BUILD_DIR)
 	$(CC) $^ -o $@ -fopenmp -lm

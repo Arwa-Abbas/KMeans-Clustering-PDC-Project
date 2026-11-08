@@ -29,6 +29,7 @@ typedef struct {
 } KMeansResult;
 
 int kmeans_load_matrix(const char *binary, const char *metadata, KMeansMatrix *matrix);
+int kmeans_metadata_dimensions(const char *metadata, uint64_t *rows, int *dimensions);
 void kmeans_free_matrix(KMeansMatrix *matrix);
 int kmeans_initialize(const KMeansMatrix *matrix, const KMeansConfig *config,
                       double *centroids);
@@ -39,6 +40,7 @@ int kmeans_openmp(const KMeansMatrix *matrix, const KMeansConfig *config,
 void kmeans_free_result(KMeansResult *result);
 int kmeans_write_result(const char *path, const KMeansMatrix *matrix,
                         const KMeansConfig *config, const KMeansResult *result,
-                        double loading_seconds, const char *variant, int threads);
+                        double loading_seconds, const char *variant, int processes,
+                        int threads);
 
 #endif

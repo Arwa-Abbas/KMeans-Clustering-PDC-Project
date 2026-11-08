@@ -81,9 +81,9 @@ int main(int argc, char **argv) {
     int status = output && kmeans_write_result(output, &matrix, &config, &result,
                                                loading_seconds,
 #ifdef KMEANS_OPENMP_CLI
-                                               "openmp", threads
+                                               "openmp", 1, threads
 #else
-                                               "sequential", threads
+                                               "sequential", 1, threads
 #endif
                                                ) ? 1 : 0;
     kmeans_free_result(&result);

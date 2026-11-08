@@ -29,8 +29,8 @@ runtime, speedup, efficiency, scalability, and different cluster counts.
 | 2 | Streaming normalization and `float32` binary conversion | **Done** |
 | 3 | Deterministic sequential K-Means reference implementation | **Done** |
 | 4 | Shared-memory K-Means using OpenMP | **Done** |
-| 5 | Distributed-memory K-Means using MPI and MPI-IO | **Remaining** |
-| 6 | Hybrid MPI + OpenMP K-Means | **Remaining** |
+| 5 | Distributed-memory K-Means using MPI and MPI-IO | **Done** |
+| 6 | Hybrid MPI + OpenMP K-Means | **Done** |
 | 7 | Experiments, scalability analysis, graphs, and final report | **Remaining** |
 
 Detailed deliverables and validation gates are documented in
@@ -245,6 +245,57 @@ centroid differences were below `6e-15`. The recorded timings are individual
 runs on WSL and are not the median-of-three benchmark results planned for
 Phase 7.
 
+## MPI K-Means
+
+The MPI executable uses collective MPI-IO to read contiguous, non-overlapping
+row blocks. The first ranks receive one extra row when the dataset size is not
+divisible by the process count. Rank 0 initializes the shared centroids from
+the same first 100,000 points and fixed seed as the other variants, then
+broadcasts them. Each rank assigns its local points; `MPI_Allreduce` combines
+cluster sums, counts, changed assignments, and SSE after each iteration.
+
+```bash
+mpirun -np 4 ./build/kmeans_mpi --clusters 16 \
+  --output results/mpi_1m_k16_p4.json
+```
+
+For all 11 million rows:
+
+```bash
+mpirun -np 4 ./build/kmeans_mpi \
+  --data dataset/processed/higgs_f32.bin \
+  --metadata dataset/processed/higgs_f32.metadata.json \
+  --clusters 16 --output results/mpi_11m_k16_p4.json
+```
+
+The one-million-row runs with 1, 2, 3, 4, and 8 ranks converged in 48
+iterations; the three-rank case also checks uneven row partitioning. The
+four-rank full-data run converged in 41 iterations. Their final centroids
+matched the sequential reference within `6e-15`. Timings are individual WSL
+runs; formal repeat-run benchmarks belong to Phase 7.
+
+## Hybrid MPI + OpenMP K-Means
+
+The hybrid executable combines MPI row partitioning and MPI-IO with OpenMP
+point assignment inside every rank. Each OpenMP thread uses private cluster
+sums, counts, changed-assignment counts, and SSE; a rank combines these before
+the MPI reductions. MPI calls are made by the main thread outside the OpenMP
+regions (`MPI_THREAD_FUNNELED`).
+
+```bash
+mpirun -np 2 ./build/kmeans_hybrid --threads 2 --clusters 16 \
+  --output results/hybrid_1m_k16_p2_t2.json
+```
+
+This example runs two MPI processes with two OpenMP threads in each process:
+four workers in total. For the full dataset, pass the same `--data` and
+`--metadata` paths shown in the MPI example. The checked 2x2, 3x2, and 4x2
+one-million-row runs matched the sequential 48-iteration result. A 2x4 run on
+all 11 million rows matched the sequential 41-iteration result with maximum
+centroid difference below `5e-15`. Runtime is sensitive to CPU placement and
+WSL file I/O, so use the controlled repeated experiments in Phase 7 to draw
+speedup conclusions.
+
 ## Project structure
 
 ```text
@@ -252,7 +303,7 @@ KMeans-Clustering-PDC-Project/
 |-- include/kmeans/       Public C headers
 |-- src/dataset/          HIGGS validation and streaming reader
 |-- src/preprocessing/    Statistics, normalization, and binary output
-|-- src/kmeans/            Matrix loader, initialization, Lloyd loop, result output
+|-- src/kmeans/            Matrix loader, Lloyd loops, MPI, local OpenMP assignment
 |-- src/tools/            Command-line program entry points
 |-- tests/                Focused C unit tests
 |-- docs/                 Project plan and binary format documentation

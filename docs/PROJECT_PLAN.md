@@ -70,7 +70,7 @@ below `1e-6` from sequential. On 11 million rows, four threads converged in
 difference below `3e-13`. Median compute times from three runs are reserved
 for the final Phase 7 experiments.
 
-## Phase 5 - Distributed-memory MPI implementation
+## Phase 5 - Distributed-memory MPI implementation (complete)
 
 Deliverables:
 
@@ -80,10 +80,13 @@ Deliverables:
 - `MPI_Allreduce` for global sums, counts, and convergence; and
 - scaling runs for 1, 2, 4, and 8 processes.
 
-Gate: results match the sequential reference within tolerance and work when the
-row count is not divisible by the process count.
+Gate passed: runs with 1, 2, 3, 4, and 8 processes on one million HIGGS rows
+all converged in 48 iterations and matched sequential centroids within
+`3e-16`. Three processes exercise uneven row counts. Four processes on all
+11 million rows converged in 41 iterations and matched sequential centroids
+within `6e-15`. Process counts and reference results are recorded in `results/`.
 
-## Phase 6 - Hybrid MPI + OpenMP implementation
+## Phase 6 - Hybrid MPI + OpenMP implementation (complete)
 
 Deliverables:
 
@@ -92,8 +95,12 @@ Deliverables:
 - process/thread configurations up to 16 total workers; and
 - avoidance of CPU oversubscription through documented binding settings.
 
-Gate: correctness checks pass for every configuration and the best hybrid
-configuration is compared with pure OpenMP and pure MPI.
+Gate passed for the tested configurations: 1x4, 2x2, 3x2, and 4x2 on one million
+rows all converged in 48 iterations, including the uneven three-rank
+partition. A 2x4 full-data run converged in 41 iterations. Final centroids
+matched sequential within `5e-15`; final SSE differed by less than `3e-13`
+relative. MPI calls occur outside OpenMP worker regions. Controlled placement,
+median timings, and the best-configuration comparison remain in Phase 7.
 
 ## Phase 7 - Experiments and report
 

@@ -16,8 +16,7 @@ static int metadata_number(const char *text, const char *key, uint64_t *value) {
     return end == location + 1 || *value == 0 ? -1 : 0;
 }
 
-int kmeans_load_matrix(const char *binary, const char *metadata, KMeansMatrix *matrix) {
-    memset(matrix, 0, sizeof *matrix);
+int kmeans_metadata_dimensions(const char *metadata, uint64_t *rows_out, int *dimensions_out) {
     FILE *meta = fopen(metadata, "rb");
     if (!meta) { perror(metadata); return -1; }
     char text[8192];
@@ -33,6 +32,16 @@ int kmeans_load_matrix(const char *binary, const char *metadata, KMeansMatrix *m
         fprintf(stderr, "error: invalid or unsupported matrix metadata\n");
         return -1;
     }
+    *rows_out = rows;
+    *dimensions_out = (int)dimensions;
+    return 0;
+}
+
+int kmeans_load_matrix(const char *binary, const char *metadata, KMeansMatrix *matrix) {
+    memset(matrix, 0, sizeof *matrix);
+    uint64_t rows;
+    int dimensions;
+    if (kmeans_metadata_dimensions(metadata, &rows, &dimensions)) return -1;
     struct stat info;
     size_t bytes = (size_t)rows * (size_t)dimensions * sizeof(float);
     if (stat(binary, &info) || info.st_size < 0 || (uint64_t)info.st_size != bytes) {

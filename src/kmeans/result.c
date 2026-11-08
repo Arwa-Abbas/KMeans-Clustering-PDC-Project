@@ -16,10 +16,11 @@ static void write_centroids(FILE *stream, const char *name, const double *values
 
 int kmeans_write_result(const char *path, const KMeansMatrix *matrix,
                         const KMeansConfig *config, const KMeansResult *result,
-                        double loading_seconds, const char *variant, int threads) {
+                        double loading_seconds, const char *variant, int processes,
+                        int threads) {
     FILE *stream = fopen(path, "w");
     if (!stream) { perror(path); return -1; }
-    fprintf(stream, "{\n  \"variant\": \"%s\",\n  \"threads\": %d,\n"
+    fprintf(stream, "{\n  \"variant\": \"%s\",\n  \"processes\": %d,\n  \"threads\": %d,\n"
             "  \"rows\": %" PRIu64 ",\n  \"features\": %d,\n"
             "  \"clusters\": %d,\n  \"seed\": %" PRIu64 ",\n"
             "  \"init_sample_size\": %" PRIu64 ",\n"
@@ -27,7 +28,7 @@ int kmeans_write_result(const char *path, const KMeansMatrix *matrix,
             "  \"final_sse\": %.17g,\n  \"loading_seconds\": %.9g,\n"
             "  \"initialization_seconds\": %.9g,\n"
             "  \"computation_seconds\": %.9g,\n",
-            variant, threads, matrix->rows, matrix->dimensions, config->clusters, config->seed,
+            variant, processes, threads, matrix->rows, matrix->dimensions, config->clusters, config->seed,
             config->sample_size < matrix->rows ? config->sample_size : matrix->rows,
             result->iterations, result->changed, result->sse, loading_seconds,
             result->initialization_seconds, result->computation_seconds);
