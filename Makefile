@@ -20,12 +20,29 @@ ALL_OBJECTS := $(sort $(DATASET_OBJECTS) $(PREPROCESS_OBJECTS) $(STATS_TEST_OBJE
 KMEANS_OBJECTS := $(OBJECT_DIR)/kmeans/matrix.o $(OBJECT_DIR)/kmeans/sequential.o $(OBJECT_DIR)/kmeans/result.o
 KMEANS_TOOL := $(BUILD_DIR)/kmeans_sequential
 KMEANS_TEST := $(BUILD_DIR)/test_sequential
+OPENMP_TOOL := $(BUILD_DIR)/kmeans_openmp
+OPENMP_TEST := $(BUILD_DIR)/test_openmp
 ALL_OBJECTS += $(KMEANS_OBJECTS) $(OBJECT_DIR)/tools/kmeans_sequential_main.o $(OBJECT_DIR)/tests/test_sequential.o
+ALL_OBJECTS += $(OBJECT_DIR)/tools/kmeans_openmp_main.o $(OBJECT_DIR)/kmeans/openmp.o $(OBJECT_DIR)/tests/test_openmp.o
 DEPENDENCIES := $(ALL_OBJECTS:.o=.d)
 
 .PHONY: all test clean
 
-all: $(DATASET_TOOL) $(PREPROCESS_TOOL) $(KMEANS_TOOL)
+all: $(DATASET_TOOL) $(PREPROCESS_TOOL) $(KMEANS_TOOL) $(OPENMP_TOOL)
+
+$(OPENMP_TOOL): $(OBJECT_DIR)/tools/kmeans_openmp_main.o $(KMEANS_OBJECTS) $(OBJECT_DIR)/kmeans/openmp.o | $(BUILD_DIR)
+	$(CC) $^ -o $@ -fopenmp -lm
+
+$(OPENMP_TEST): $(OBJECT_DIR)/tests/test_openmp.o $(OBJECT_DIR)/kmeans/sequential.o $(OBJECT_DIR)/kmeans/openmp.o | $(BUILD_DIR)
+	$(CC) $^ -o $@ -fopenmp -lm
+
+$(OBJECT_DIR)/tools/kmeans_openmp_main.o: src/tools/kmeans_sequential_main.c
+	mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -fopenmp -DKMEANS_OPENMP_CLI -MMD -MP -c $< -o $@
+
+$(OBJECT_DIR)/kmeans/openmp.o: src/kmeans/openmp.c
+	mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -fopenmp -MMD -MP -c $< -o $@
 
 $(KMEANS_TOOL): $(OBJECT_DIR)/tools/kmeans_sequential_main.o $(KMEANS_OBJECTS) | $(BUILD_DIR)
 	$(CC) $^ -o $@ -lm
@@ -53,10 +70,11 @@ $(OBJECT_DIR)/tests/%.o: tests/%.c
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
-test: $(DATASET_TOOL) $(STATS_TEST) $(KMEANS_TEST)
+test: $(DATASET_TOOL) $(STATS_TEST) $(KMEANS_TEST) $(OPENMP_TEST)
 	$(DATASET_TOOL) inspect --sample-rows 1000
 	$(STATS_TEST)
 	$(KMEANS_TEST)
+	$(OPENMP_TEST)
 
 clean:
 	rm -rf $(BUILD_DIR)

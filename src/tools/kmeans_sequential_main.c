@@ -6,6 +6,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#ifdef KMEANS_OPENMP_CLI
+#include <omp.h>
+#endif
 
 static double seconds(void) {
     struct timespec now;
@@ -25,6 +28,7 @@ int main(int argc, char **argv) {
     const char *data = "dataset/processed/higgs_1m_f32.bin";
     const char *metadata = "dataset/processed/higgs_1m_f32.metadata.json";
     const char *output = NULL;
+    int threads = 1;
     KMeansConfig config = {.clusters = 16, .max_iterations = 100,
                            .tolerance = 0.001, .seed = 42, .sample_size = 100000};
     for (int i = 1; i < argc; ++i) {
@@ -42,6 +46,10 @@ int main(int argc, char **argv) {
         else if (!strcmp(key, "--init-sample-size") && !number(value, &parsed))
             config.sample_size = parsed;
         else if (!strcmp(key, "--seed") && !number(value, &parsed)) config.seed = parsed;
+#ifdef KMEANS_OPENMP_CLI
+        else if (!strcmp(key, "--threads") && !number(value, &parsed) && parsed <= 1024)
+            threads = (int)parsed;
+#endif
         else if (!strcmp(key, "--tolerance")) {
             char *end;
             errno = 0;
@@ -55,7 +63,13 @@ int main(int argc, char **argv) {
     if (kmeans_load_matrix(data, metadata, &matrix)) return 1;
     double loading_seconds = seconds() - started;
     KMeansResult result;
-    if (kmeans_sequential(&matrix, &config, &result)) {
+    int run_status;
+#ifdef KMEANS_OPENMP_CLI
+    run_status = kmeans_openmp(&matrix, &config, threads, &result);
+#else
+    run_status = kmeans_sequential(&matrix, &config, &result);
+#endif
+    if (run_status) {
         fprintf(stderr, "error: invalid configuration or insufficient memory\n");
         kmeans_free_matrix(&matrix);
         return 1;
@@ -65,13 +79,23 @@ int main(int argc, char **argv) {
            matrix.rows, config.clusters, result.iterations, result.sse,
            loading_seconds, result.initialization_seconds, result.computation_seconds);
     int status = output && kmeans_write_result(output, &matrix, &config, &result,
-                                               loading_seconds) ? 1 : 0;
+                                               loading_seconds,
+#ifdef KMEANS_OPENMP_CLI
+                                               "openmp", threads
+#else
+                                               "sequential", threads
+#endif
+                                               ) ? 1 : 0;
     kmeans_free_result(&result);
     kmeans_free_matrix(&matrix);
     return status;
 usage:
     fprintf(stderr, "Usage: %s [--data BIN] [--metadata JSON] [--output JSON] "
             "[--clusters K] [--max-iterations N] [--tolerance FRACTION] "
-            "[--seed N] [--init-sample-size N]\n", argv[0]);
+            "[--seed N] [--init-sample-size N]"
+#ifdef KMEANS_OPENMP_CLI
+            " [--threads N]"
+#endif
+            "\n", argv[0]);
     return 2;
 }

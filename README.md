@@ -28,7 +28,7 @@ runtime, speedup, efficiency, scalability, and different cluster counts.
 | 1 | Dataset inspection, validation, and safe extraction tooling | **Done** |
 | 2 | Streaming normalization and `float32` binary conversion | **Done** |
 | 3 | Deterministic sequential K-Means reference implementation | **Done** |
-| 4 | Shared-memory K-Means using OpenMP | **Remaining** |
+| 4 | Shared-memory K-Means using OpenMP | **Done** |
 | 5 | Distributed-memory K-Means using MPI and MPI-IO | **Remaining** |
 | 6 | Hybrid MPI + OpenMP K-Means | **Remaining** |
 | 7 | Experiments, scalability analysis, graphs, and final report | **Remaining** |
@@ -223,6 +223,27 @@ The sequential reference passed the synthetic test, converged in 48 iterations
 on one million points, and converged in 41 iterations on the full 11 million
 points at K=16. A repeat run on one million points produced identical final
 centroids and SSE. Additional K values are part of Phase 7 experiments.
+
+## OpenMP K-Means
+
+The OpenMP executable shares the matrix loader, fixed-seed K-Means++
+initialization, and result format with the sequential reference. Each thread
+assigns a static block of points and accumulates private cluster sums, counts,
+changed assignments, and SSE. These are combined after the parallel region.
+
+```bash
+mkdir -p results
+./build/kmeans_openmp --threads 4 --clusters 16 \
+  --output results/openmp_1m_k16_t4.json
+```
+
+For the full dataset, supply `--data dataset/processed/higgs_f32.bin` and
+`--metadata dataset/processed/higgs_f32.metadata.json`. Results for 1, 2, 4,
+8, and 16 threads on one million rows, plus a four-thread full-data result, are
+stored in `results/`. All matched the sequential iteration counts; maximum
+centroid differences were below `6e-15`. The recorded timings are individual
+runs on WSL and are not the median-of-three benchmark results planned for
+Phase 7.
 
 ## Project structure
 

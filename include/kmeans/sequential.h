@@ -34,9 +34,11 @@ int kmeans_initialize(const KMeansMatrix *matrix, const KMeansConfig *config,
                       double *centroids);
 int kmeans_sequential(const KMeansMatrix *matrix, const KMeansConfig *config,
                       KMeansResult *result);
+int kmeans_openmp(const KMeansMatrix *matrix, const KMeansConfig *config,
+                  int threads, KMeansResult *result);
 void kmeans_free_result(KMeansResult *result);
 int kmeans_write_result(const char *path, const KMeansMatrix *matrix,
                         const KMeansConfig *config, const KMeansResult *result,
-                        double loading_seconds);
+                        double loading_seconds, const char *variant, int threads);
 
 #endif
