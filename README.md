@@ -236,7 +236,7 @@ KMeans-Clustering-PDC-Project/
 |-- tests/                Focused C unit tests
 |-- docs/                 Project plan and binary format documentation
 |-- dataset/              Local source/processed data (ignored by Git)
-|-- results/              Experiment output (ignored by Git)
+|-- results/              Reference runs and experiment output (tracked in Git)
 |-- build/                Compiled objects and executables (ignored by Git)
 |-- Makefile
 `-- README.md
@@ -255,6 +255,8 @@ together rather than creating a separate file for every small function.
 - Report the median of three benchmark runs.
 - Record compiler version, flags, hardware, process count, thread count, and
   process/thread placement.
+- Treat recorded timing values as machine-specific; centroids and SSE are the
+  deterministic correctness reference for runs with matching data and settings.
 - Calculate speedup as `T1 / Tp` and efficiency as
   `speedup / (MPI processes * OpenMP threads)`.
 

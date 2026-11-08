@@ -1,7 +1,5 @@
-# Local datasets and generated experiment artifacts
+# Local datasets and temporary artifacts
 /dataset/
-/results/
-/output/
 *.log
 
 # Build and local tooling output
