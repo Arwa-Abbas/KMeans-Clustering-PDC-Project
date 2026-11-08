@@ -1,0 +1,13 @@
+# Local datasets and generated experiment artifacts
+/dataset/
+/results/
+/output/
+*.log
+
+# Build and local tooling output
+/build/
+/tmp/
+__pycache__/
+*.py[cod]
+.venv/
+
