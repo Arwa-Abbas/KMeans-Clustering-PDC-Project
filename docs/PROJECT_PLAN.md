@@ -34,7 +34,7 @@ Gate passed: the full matrix contains exactly `11,000,000 * 28` values and is
 matched a freshly normalized source value within `1e-6`. A deterministic
 one-million-row development matrix was also generated.
 
-## Phase 3 - Sequential reference implementation
+## Phase 3 - Sequential reference implementation (complete)
 
 Deliverables:
 
@@ -45,8 +45,13 @@ Deliverables:
 - convergence by changed-assignment percentage and iteration cap; and
 - SSE, centroid, iteration, and timing output.
 
-Gate: deterministic repeat runs produce matching assignments/SSE, and a tiny
-synthetic dataset matches a hand-checked answer.
+Gate passed: a four-point, two-cluster synthetic test reached the hand-checked
+SSE of 112. The one-million-row K=16 run converged in 48 iterations, and a
+repeat run produced identical centroids, SSE, and iteration count. The full
+11-million-row K=16 run converged in 41 iterations with final SSE
+216,216,213.267. The default fixed seed is 42 and the first 100,000 points
+form the deterministic K-Means++ sample. Runs for K=64 and 256 remain part of
+the final experiments in Phase 7.
 
 ## Phase 4 - Shared-memory OpenMP implementation
 

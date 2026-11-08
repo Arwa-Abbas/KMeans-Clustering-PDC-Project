@@ -27,7 +27,7 @@ runtime, speedup, efficiency, scalability, and different cluster counts.
 |---|---|---|
 | 1 | Dataset inspection, validation, and safe extraction tooling | **Done** |
 | 2 | Streaming normalization and `float32` binary conversion | **Done** |
-| 3 | Deterministic sequential K-Means reference implementation | **Remaining** |
+| 3 | Deterministic sequential K-Means reference implementation | **Done** |
 | 4 | Shared-memory K-Means using OpenMP | **Remaining** |
 | 5 | Distributed-memory K-Means using MPI and MPI-IO | **Remaining** |
 | 6 | Hybrid MPI + OpenMP K-Means | **Remaining** |
@@ -191,6 +191,39 @@ with freshly parsed and normalized source values. The binary layout and future
 MPI-IO offset calculation are documented in
 [docs/BINARY_FORMAT.md](docs/BINARY_FORMAT.md).
 
+## Sequential K-Means reference
+
+The default run uses the one-million-row development matrix, K=16, seed 42,
+100,000 initialization samples, a 0.1% changed-assignment threshold, and a
+100-iteration cap:
+
+```bash
+./build/kmeans_sequential --output results/sequential_1m_k16.json
+```
+
+Create `results/` first with `mkdir -p results`. To use the complete dataset:
+
+```bash
+./build/kmeans_sequential \
+  --data dataset/processed/higgs_f32.bin \
+  --metadata dataset/processed/higgs_f32.metadata.json \
+  --clusters 16 \
+  --output results/sequential_11m_k16.json
+```
+
+Options include `--clusters`, `--seed`, `--init-sample-size`,
+`--max-iterations`, and `--tolerance` (a fraction, so `0.001` is 0.1%). The
+result JSON contains starting and final centroids, final SSE, iteration count,
+and separate loading, initialization, and iteration timings. The printed SSE
+for an iteration uses centroids before that iteration's update; `final_sse` is
+recalculated against the final centroids. Loading and initialization are
+excluded from the measured computation time.
+
+The sequential reference passed the synthetic test, converged in 48 iterations
+on one million points, and converged in 41 iterations on the full 11 million
+points at K=16. A repeat run on one million points produced identical final
+centroids and SSE. Additional K values are part of Phase 7 experiments.
+
 ## Project structure
 
 ```text
@@ -198,6 +231,7 @@ KMeans-Clustering-PDC-Project/
 |-- include/kmeans/       Public C headers
 |-- src/dataset/          HIGGS validation and streaming reader
 |-- src/preprocessing/    Statistics, normalization, and binary output
+|-- src/kmeans/            Matrix loader, initialization, Lloyd loop, result output
 |-- src/tools/            Command-line program entry points
 |-- tests/                Focused C unit tests
 |-- docs/                 Project plan and binary format documentation

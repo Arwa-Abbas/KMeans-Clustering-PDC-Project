@@ -17,11 +17,21 @@ STATS_TEST := $(BUILD_DIR)/test_online_stats
 STATS_TEST_OBJECTS := $(OBJECT_DIR)/tests/test_online_stats.o \
 	$(OBJECT_DIR)/preprocessing/online_stats.o
 ALL_OBJECTS := $(sort $(DATASET_OBJECTS) $(PREPROCESS_OBJECTS) $(STATS_TEST_OBJECTS))
+KMEANS_OBJECTS := $(OBJECT_DIR)/kmeans/matrix.o $(OBJECT_DIR)/kmeans/sequential.o $(OBJECT_DIR)/kmeans/result.o
+KMEANS_TOOL := $(BUILD_DIR)/kmeans_sequential
+KMEANS_TEST := $(BUILD_DIR)/test_sequential
+ALL_OBJECTS += $(KMEANS_OBJECTS) $(OBJECT_DIR)/tools/kmeans_sequential_main.o $(OBJECT_DIR)/tests/test_sequential.o
 DEPENDENCIES := $(ALL_OBJECTS:.o=.d)
 
 .PHONY: all test clean
 
-all: $(DATASET_TOOL) $(PREPROCESS_TOOL)
+all: $(DATASET_TOOL) $(PREPROCESS_TOOL) $(KMEANS_TOOL)
+
+$(KMEANS_TOOL): $(OBJECT_DIR)/tools/kmeans_sequential_main.o $(KMEANS_OBJECTS) | $(BUILD_DIR)
+	$(CC) $^ -o $@ -lm
+
+$(KMEANS_TEST): $(OBJECT_DIR)/tests/test_sequential.o $(OBJECT_DIR)/kmeans/sequential.o | $(BUILD_DIR)
+	$(CC) $^ -o $@ -lm
 
 $(DATASET_TOOL): $(DATASET_OBJECTS) | $(BUILD_DIR)
 	$(CC) $(DATASET_OBJECTS) -o $@ $(LDLIBS)
@@ -43,9 +53,10 @@ $(OBJECT_DIR)/tests/%.o: tests/%.c
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
-test: $(DATASET_TOOL) $(STATS_TEST)
+test: $(DATASET_TOOL) $(STATS_TEST) $(KMEANS_TEST)
 	$(DATASET_TOOL) inspect --sample-rows 1000
 	$(STATS_TEST)
+	$(KMEANS_TEST)
 
 clean:
 	rm -rf $(BUILD_DIR)
