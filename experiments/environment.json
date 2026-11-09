@@ -10,7 +10,7 @@
   "mpirun": "mpirun (Open MPI) 4.1.6",
   "mpi_placement": "mpirun --bind-to none",
   "omp_proc_bind": "unset",
-  "git_commit": "4ffc360a8aac71077cf2b29bd46b17c231366b29",
+  "git_commit": "a0674e69ed67054f78b9fcfaa81265ec0c41ff00",
   "location": "/mnt/c/Arwa/FAST/Semester 7 (Fall 2026)/Parallel Distributed Computing (PDC)/kmeans_clustering",
   "dataset_bytes": {
     "1m": 112000000,
