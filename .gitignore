@@ -5,6 +5,7 @@
 # Build and local tooling output
 /build/
 /tmp/
+/experiments/raw/
 __pycache__/
 *.py[cod]
 .venv/

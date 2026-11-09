@@ -1,0 +1,19 @@
+{
+  "results_version": 2,
+  "platform": "Linux-6.18.33.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "python": "3.12.3",
+  "cpu_model": "Intel(R) Core(TM) Ultra 9 275HX",
+  "physical_cores": 24,
+  "logical_cpus": 24,
+  "compiler": "g++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+  "mpicxx": "g++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+  "mpirun": "mpirun (Open MPI) 4.1.6",
+  "mpi_placement": "mpirun --bind-to none",
+  "omp_proc_bind": "unset",
+  "git_commit": "4ffc360a8aac71077cf2b29bd46b17c231366b29",
+  "location": "/mnt/c/Arwa/FAST/Semester 7 (Fall 2026)/Parallel Distributed Computing (PDC)/kmeans_clustering",
+  "dataset_bytes": {
+    "1m": 112000000,
+    "11m": 1232000000
+  }
+}
