@@ -184,8 +184,9 @@ median-time/speedup/efficiency CSVs and Matplotlib PNG graphs under
 `experiments/`. Per-run JSON records stay local in `experiments/raw/`, which
 Git ignores.
 
-Current results were measured on an Intel Core Ultra 9 275HX (24 cores) under
-Ubuntu 24.04 in WSL2, using the median of three runs:
+Current results were measured under Ubuntu 24.04 in WSL2 using the median of
+three runs. Strong-scaling configurations used up to 16 total workers
+(processes times threads), while weak scaling used up to 8 workers:
 
 | Experiment | Status | Output |
 |---|---|---|

@@ -89,10 +89,10 @@ python3 -m venv .venv
 
 ## 9. Run the experiments
 
-Before long runs, plug the laptop in, set Windows power mode to best
-performance, and close other programs.
+Before long runs, keep the test system on stable power, use a consistent power
+mode, and close other programs.
 
-| Command | Measures | Time on a Core Ultra 9 275HX |
+| Command | Measures | Observed or estimated time |
 |---|---|---:|
 | `.venv/bin/python experiments/run.py --suite quick --clusters 16` | Four configurations, as a check | 1-2 min |
 | `.venv/bin/python experiments/run.py --suite scaling --dataset 1m --clusters 16,64,256` | Strong scaling, 1M rows | about 1 h 45 min |
@@ -110,7 +110,7 @@ rerunning a command skips finished repetitions. Add `--force` to rerun them.
 experiments/summary.csv          Strong scaling: median time, speedup, efficiency, correctness
 experiments/weak_summary.csv     Weak scaling: median time, weak efficiency, correctness
 experiments/graphs/              Bar charts plus *_scaling.png and weak_*_efficiency.png
-experiments/environment.json     CPU, compiler, MPI version, MPI placement
+experiments/environment.json     Platform, tools, MPI placement, worker limit
 experiments/raw/                 One JSON file per run (local only, not committed)
 ```
 
@@ -132,7 +132,7 @@ To redraw the graphs from the two CSV files without running anything:
   interrupted. Rerun step 6 with `--overwrite`.
 - **`--rows ... exceeds the ... rows`:** the weak suite needs the full 11M-row
   matrix from step 6.
-- **One-worker timings vary, or efficiency is above 1:** on processors with
-  performance and efficiency cores, the operating system chooses the core
-  type for each run. See "Fair comparisons" in
+- **One-worker timings vary, or efficiency is above 1:** CPU frequency, cache
+  state, background activity, and operating-system scheduling affect short
+  measurements. See "Fair comparisons" in
   [experiments/README.md](experiments/README.md).

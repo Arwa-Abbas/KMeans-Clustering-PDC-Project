@@ -51,9 +51,9 @@ against the sequential result for the same rows.
 
 ## Run times
 
-Measured computation time for three repeats on the Core Ultra 9 275HX, plus
-an estimate for the 11M grid (11 times the rows; K=64 and K=256 hit the
-100-iteration cap at both sizes):
+Measured computation time for three repeats using configurations of up to 16
+workers, plus an estimate for the 11M grid (11 times the rows; K=64 and K=256
+hit the 100-iteration cap at both sizes):
 
 | Suite | K=16 | K=64 | K=256 |
 |---|---:|---:|---:|
@@ -75,7 +75,7 @@ experiments/RESULTS_1M.md        Written summary of the 1M strong-scaling result
 experiments/summary.csv          Strong scaling: median time, speedup, efficiency, correctness
 experiments/weak_summary.csv     Weak scaling: median time, time per iteration, efficiency
 experiments/graphs/*.png         Runtime, speedup, efficiency, and scaling graphs
-experiments/environment.json     CPU, cores, tool versions, MPI placement, data sizes
+experiments/environment.json     Platform, tools, MPI placement, worker limit, data sizes
 ```
 
 Loading and centroid initialization are excluded from `computation_seconds`.
@@ -90,12 +90,11 @@ the same rows, K, and seed.
 - MPI programs are launched with `mpirun --bind-to none`. Without it, Open MPI
   pins each rank to one core when it starts two or fewer ranks, and a hybrid
   rank's OpenMP threads would then share that core.
-- On CPUs with both performance and efficiency cores, such as the Core Ultra 9
-  275HX used for the current results, the operating system decides which kind
-  of core each run lands on, and WSL2 cannot pin a run to one kind. Identical
-  one-worker runs therefore differ by up to about 1.5x (at K=256, MPI with one
-  process took 218 s and sequential 328 s), and some efficiencies come out
-  above 1. Report these as measured and explain the cause; do not clamp them.
+- CPU frequency, cache state, background activity, and operating-system
+  scheduling can make identical one-worker runs differ. In the current WSL2
+  measurements, the difference reached about 1.5x at K=256 (MPI with one
+  process took 218 s and sequential 328 s), so some efficiencies are above 1.
+  Report these as measured and explain the variation; do not clamp them.
 - Records carry a results version. Runs saved by older code (before the C++17
   port and these fixes) are ignored and rerun automatically.
 

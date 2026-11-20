@@ -25,9 +25,9 @@ Efficiencies slightly above 1.0 are retained as measured. They can occur from
 cache effects, CPU frequency changes, and normal timing variation; they are
 not clamped during analysis.
 
-## Environment
+## Benchmark setup
 
-- CPU: Intel Core Ultra 9 275HX, 24 logical CPUs
+- Strong-scaling configurations: up to 16 total workers
 - Platform: Ubuntu 24.04 under WSL2
 - Compiler: GCC 13.3.0 with C++17
 - MPI: Open MPI 4.1.6 with `--bind-to none`

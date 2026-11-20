@@ -100,19 +100,12 @@ def first_line(command: list[str]) -> str:
 
 
 def record_environment() -> None:
-    model = "unavailable"
-    for line in command_output(["lscpu"]).splitlines():
-        if line.startswith("Model name:"):
-            model = line.split(":", 1)[1].strip()
-    cores = {line for line in command_output(["lscpu", "-p=Core,Socket"]).splitlines()
-             if line and not line.startswith("#")}
     data = {
         "results_version": VERSION,
         "platform": platform.platform(),
         "python": platform.python_version(),
-        "cpu_model": model,
-        "physical_cores": len(cores) or None,
-        "logical_cpus": os.cpu_count(),
+        "maximum_tested_workers": max(processes * threads
+                                      for _, processes, threads in SCALING),
         "compiler": first_line(["g++", "--version"]),
         "mpicxx": first_line(["mpicxx", "--version"]),
         "mpirun": first_line(["mpirun", "--version"]),
