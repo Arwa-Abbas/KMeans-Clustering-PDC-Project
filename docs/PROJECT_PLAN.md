@@ -124,3 +124,7 @@ Record the median of three runs and report:
 Keep the same initialization seed and starting centroids across all variants so
 the timing comparison is fair. Results saved by the C11 code are superseded and
 must be regenerated with the current runner.
+
+Current status: the 1-million-row strong-scaling suite (K=16, 64, and 256),
+the weak-scaling suite (K=16 and 64), and the 11-million-row strong-scaling
+suite at K=16 are complete.

@@ -30,6 +30,13 @@ processes, and hybrid 2x2, 2x4, 4x2, 4x4. Speedup is the median sequential
 computation time divided by the median configuration time. Efficiency divides
 speedup by MPI processes times OpenMP threads.
 
+Current strong-scaling status:
+
+| Dataset | K | Status |
+|---|---:|---|
+| 1M rows | 16, 64, 256 | Complete |
+| 11M rows | 16 | Complete; see [`RESULTS_11M.md`](RESULTS_11M.md) |
+
 ## Weak scaling
 
 Each worker keeps the same number of rows, so ideal weak scaling keeps the
@@ -52,14 +59,16 @@ against the sequential result for the same rows.
 ## Run times
 
 Measured computation time for three repeats using configurations of up to 16
-workers, plus an estimate for the 11M grid (11 times the rows; K=64 and K=256
-hit the 100-iteration cap at both sizes):
+workers:
 
-| Suite | K=16 | K=64 | K=256 |
-|---|---:|---:|---:|
-| Strong scaling, 1M rows | 3.5 min | 25 min | 77 min |
-| Weak scaling, up to 11M rows | 5 min | 17 min | not run |
-| Strong scaling, 11M rows (estimate) | 30 min | 5 h | 14 h |
+| Suite | K | Measured computation time |
+|---|---:|---:|
+| Strong scaling, 1M rows | 16 | 3.5 min |
+| Strong scaling, 1M rows | 64 | 25 min |
+| Strong scaling, 1M rows | 256 | 77 min |
+| Weak scaling, up to 11M rows | 16 | 5 min |
+| Weak scaling, up to 11M rows | 64 | 17 min |
+| Strong scaling, 11M rows | 16 | 17 min |
 
 Loading the binary and starting processes add a little wall-clock time per
 run. Each successful repetition is saved immediately under `experiments/raw/`.
@@ -72,6 +81,7 @@ deliberately.
 ```text
 experiments/raw/                 Per-run result JSON and command metadata (local only, ignored by Git)
 experiments/RESULTS_1M.md        Written summary of the 1M strong-scaling results
+experiments/RESULTS_11M.md       Written summary of completed 11M strong-scaling results
 experiments/summary.csv          Strong scaling: median time, speedup, efficiency, correctness
 experiments/weak_summary.csv     Weak scaling: median time, time per iteration, efficiency
 experiments/graphs/*.png         Runtime, speedup, efficiency, and scaling graphs

@@ -192,11 +192,14 @@ three runs. Strong-scaling configurations used up to 16 total workers
 |---|---|---|
 | Strong scaling, 1M rows, K=16, 64, 256 | Complete | [RESULTS_1M.md](experiments/RESULTS_1M.md), `experiments/summary.csv` |
 | Weak scaling, 1.375M rows per worker (up to all 11M), K=16, 64 | Complete | `experiments/weak_summary.csv` |
-| Strong scaling, 11M rows, K=16, 64, 256 | Not yet run | — |
+| Strong scaling, 11M rows, K=16 | Complete | [RESULTS_11M.md](experiments/RESULTS_11M.md), `experiments/summary.csv` |
 
 On 1M rows the fastest configuration was OpenMP with 16 threads at every K:
 10.7x faster than sequential at K=16, 13.3x at K=64, and 17.7x at K=256. All
-72 measured configurations matched the sequential result.
+42 strong-scaling configurations matched their sequential result. On 11M rows
+at K=16, OpenMP with 16 threads was also fastest at 9.57x speedup, and all 14
+configurations matched the sequential result. All 30 weak-scaling
+configurations passed their correctness checks as well.
 
 ## Project structure
 

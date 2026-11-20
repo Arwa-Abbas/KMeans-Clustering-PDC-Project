@@ -97,7 +97,7 @@ mode, and close other programs.
 | `.venv/bin/python experiments/run.py --suite quick --clusters 16` | Four configurations, as a check | 1-2 min |
 | `.venv/bin/python experiments/run.py --suite scaling --dataset 1m --clusters 16,64,256` | Strong scaling, 1M rows | about 1 h 45 min |
 | `.venv/bin/python experiments/run.py --suite weak --clusters 16,64` | Weak scaling, up to 11M rows | about 22 min |
-| `.venv/bin/python experiments/run.py --suite scaling --dataset 11m --clusters 16` | Strong scaling, 11M rows, K=16 | about 30 min |
+| `.venv/bin/python experiments/run.py --suite scaling --dataset 11m --clusters 16` | Strong scaling, 11M rows, K=16 (complete) | about 17 min measured compute time |
 | `.venv/bin/python experiments/run.py --suite scaling --dataset 11m --clusters 64` | Strong scaling, 11M rows, K=64 | about 5 h |
 | `.venv/bin/python experiments/run.py --suite scaling --dataset 11m --clusters 256` | Strong scaling, 11M rows, K=256 | about 14 h |
 
