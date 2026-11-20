@@ -353,14 +353,21 @@ def scaling_lines(ax, rows: list[dict], metric: str) -> None:
             ax.plot(*zip(*points), color=COLORS[variant], linewidth=2, marker=MARKERS[variant],
                     markersize=8, markeredgecolor="white", markeredgewidth=1.5,
                     label="OpenMP threads" if variant == "openmp" else "MPI processes")
-    hybrid = [row for row in rows if row["variant"] == "hybrid"]
+    hybrid = sorted((row for row in rows if row["variant"] == "hybrid"),
+                    key=lambda row: (row["workers"], -float(row[metric])))
     if hybrid:
         ax.scatter([row["workers"] for row in hybrid], [float(row[metric]) for row in hybrid],
                    s=80, color=COLORS["hybrid"], marker=MARKERS["hybrid"], edgecolors="white",
                    linewidths=1.5, zorder=3, label="Hybrid processes x threads")
+        # Layouts with the same worker count (2x4 and 4x2) can land on almost the same
+        # point, so stack their labels: the higher value above, the next ones below.
+        placed: dict[int, int] = {}
         for row in hybrid:
+            index = placed.get(row["workers"], 0)
+            placed[row["workers"]] = index + 1
             ax.annotate(f"{row['processes']}x{row['threads']}", (row["workers"], float(row[metric])),
-                        textcoords="offset points", xytext=(7, -3), fontsize=8, color=INK)
+                        textcoords="offset points", xytext=(7, 2 - 12 * index),
+                        fontsize=8, color=INK)
 
 
 def worker_axis(ax, workers: list[int]) -> None:
@@ -414,18 +421,45 @@ def weak_graph(rows: list[dict], clusters: int) -> None:
     plt.close(fig)
 
 
+INT_FIELDS = {"rows", "rows_per_worker", "clusters", "processes", "threads", "workers",
+              "repeats", "iterations"}
+
+
+def read_summary(name: str) -> list[dict]:
+    """Rows of a saved summary CSV with numeric fields converted back from text."""
+    path = EXPERIMENTS / name
+    if not path.exists():
+        return []
+    rows = []
+    with path.open(newline="", encoding="utf-8") as stream:
+        for row in csv.DictReader(stream):
+            for key, value in row.items():
+                if key in INT_FIELDS:
+                    row[key] = int(value)
+                elif key == "correct":
+                    row[key] = value == "True"
+                elif key not in ("dataset", "variant"):
+                    row[key] = float(value)
+            rows.append(row)
+    return rows
+
+
 def report(records: list[dict]) -> bool:
     strong = summarize_strong(records)
     weak = summarize_weak(records)
     save_csv("summary.csv", STRONG_FIELDS, strong)
     save_csv("weak_summary.csv", WEAK_FIELDS, weak)
+    draw_graphs(strong, weak)
+    return all(row["correct"] for row in strong + weak)
+
+
+def draw_graphs(strong: list[dict], weak: list[dict]) -> None:
     for dataset, clusters in sorted({(row["dataset"], row["clusters"]) for row in strong}):
         for metric in ("median_seconds", "speedup", "efficiency"):
             bar_graph(strong, dataset, clusters, metric)
         strong_graph(strong, dataset, clusters)
     for clusters in sorted({row["clusters"] for row in weak}):
         weak_graph(weak, clusters)
-    return all(row["correct"] for row in strong + weak)
 
 
 def main() -> int:
@@ -441,7 +475,14 @@ def main() -> int:
     parser.add_argument("--weak-iterations", type=int, default=20,
                         help="fixed iteration count for weak-scaling runs")
     parser.add_argument("--force", action="store_true", help="rerun saved repetitions")
+    parser.add_argument("--redraw", action="store_true",
+                        help="only redraw graphs from summary.csv and weak_summary.csv")
     args = parser.parse_args()
+    if args.redraw:
+        GRAPHS.mkdir(parents=True, exist_ok=True)
+        draw_graphs(read_summary("summary.csv"), read_summary("weak_summary.csv"))
+        print(f"Redrew graphs in {GRAPHS}")
+        return 0
     args.dataset = args.dataset or ("11m" if args.suite == "weak" else "1m")
     args.clusters = [int(item) for item in args.clusters.split(",")]
     if (args.repeats < 1 or not args.clusters or any(k < 1 for k in args.clusters) or

@@ -6,6 +6,9 @@ is hybrid: MPI processes divide the data, and OpenMP threads calculate
 distances within each process. Sequential, OpenMP-only, and MPI-only programs
 provide correctness and performance comparisons.
 
+For a command-by-command checklist from a fresh machine to results and graphs,
+see [STEPS_TO_RUN.md](STEPS_TO_RUN.md).
+
 ## Features
 
 - Four K-Means execution modes built from one code base: sequential, OpenMP,
@@ -60,7 +63,7 @@ Enter Ubuntu with `wsl -d Ubuntu-24.04`, then install the build tools:
 
 ```bash
 sudo apt update
-sudo apt install -y build-essential openmpi-bin libopenmpi-dev zlib1g-dev
+sudo apt install -y build-essential openmpi-bin libopenmpi-dev zlib1g-dev python3-venv unzip
 ```
 
 For meaningful performance measurements, place the repository in Ubuntu's
@@ -171,14 +174,28 @@ and `--init-sample-size`. The OpenMP and hybrid programs also accept
 in SSE and centroids within floating-point tolerance. Computation times vary
 with hardware and process/thread placement; use repeated runs for benchmarks.
 
-## Experiments and graphs
+## Experiments and results
 
 The [experiment guide](experiments/README.md) explains how to install the
 Python plotting dependency from `requirements.txt` and run resumable
 three-repeat benchmarks. The runner covers strong scaling (fixed dataset, 1-16
-workers) and weak scaling (fixed rows per worker, 1-8 workers), and saves raw
-JSON, median-time/speedup/efficiency CSVs, and Matplotlib PNG graphs under
-`experiments/`.
+workers) and weak scaling (fixed rows per worker, 1-8 workers), and saves
+median-time/speedup/efficiency CSVs and Matplotlib PNG graphs under
+`experiments/`. Per-run JSON records stay local in `experiments/raw/`, which
+Git ignores.
+
+Current results were measured on an Intel Core Ultra 9 275HX (24 cores) under
+Ubuntu 24.04 in WSL2, using the median of three runs:
+
+| Experiment | Status | Output |
+|---|---|---|
+| Strong scaling, 1M rows, K=16, 64, 256 | Complete | [RESULTS_1M.md](experiments/RESULTS_1M.md), `experiments/summary.csv` |
+| Weak scaling, 1.375M rows per worker (up to all 11M), K=16, 64 | Complete | `experiments/weak_summary.csv` |
+| Strong scaling, 11M rows, K=16, 64, 256 | Not yet run | — |
+
+On 1M rows the fastest configuration was OpenMP with 16 threads at every K:
+10.7x faster than sequential at K=16, 13.3x at K=64, and 17.7x at K=256. All
+72 measured configurations matched the sequential result.
 
 ## Project structure
 
