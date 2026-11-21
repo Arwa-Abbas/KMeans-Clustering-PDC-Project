@@ -54,8 +54,9 @@ Gate passed: a four-point, two-cluster synthetic test reached the hand-checked
 SSE of 112. The one-million-row K=16 run converged in 48 iterations, and a
 repeat run produced identical centroids, SSE, and iteration count. The full
 11-million-row K=16 run converged in 41 iterations with final SSE
-216,216,213.267. The default fixed seed is 42 and the first 100,000 points
-form the deterministic K-Means++ sample.
+216,216,213.267. The 11-million-row K=64 run reached the 100-iteration cap
+with final SSE 181,460,214.849. The default fixed seed is 42 and the first
+100,000 points form the deterministic K-Means++ sample.
 
 ## Phase 4 - Shared-memory OpenMP implementation (complete)
 
@@ -127,4 +128,4 @@ must be regenerated with the current runner.
 
 Current status: the 1-million-row strong-scaling suite (K=16, 64, and 256),
 the weak-scaling suite (K=16 and 64), and the 11-million-row strong-scaling
-suite at K=16 are complete.
+suite at K=16 and K=64 are complete.

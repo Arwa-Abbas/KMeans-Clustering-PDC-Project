@@ -35,7 +35,7 @@ Current strong-scaling status:
 | Dataset | K | Status |
 |---|---:|---|
 | 1M rows | 16, 64, 256 | Complete |
-| 11M rows | 16 | Complete; see [`RESULTS_11M.md`](RESULTS_11M.md) |
+| 11M rows | 16, 64 | Complete; see [`RESULTS_11M.md`](RESULTS_11M.md) |
 
 ## Weak scaling
 
@@ -69,6 +69,7 @@ workers:
 | Weak scaling, up to 11M rows | 16 | 5 min |
 | Weak scaling, up to 11M rows | 64 | 17 min |
 | Strong scaling, 11M rows | 16 | 17 min |
+| Strong scaling, 11M rows | 64 | 170 min |
 
 Loading the binary and starting processes add a little wall-clock time per
 run. Each successful repetition is saved immediately under `experiments/raw/`.
